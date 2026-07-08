@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cellular Bridge Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #09090b;
+      --card: #18181b;
+      --card-border: #27272a;
+      --text: #fafafa;
+      --text-muted: #a1a1aa;
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --success: #22c55e;
+      --error: #ef4444;
+      --warning: #f59e0b;
+      --radius: 12px;
+      --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem;
+    }
+
+    header {
+      width: 100%;
+      max-width: 800px;
+      margin-bottom: 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      letter-spacing: -0.025em;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    h1 span.logo-highlight {
+      color: var(--primary);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.35rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      background: #27272a;
+      border: 1px solid var(--card-border);
+      transition: all 0.3s ease;
+    }
+
+    .badge-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: var(--text-muted);
+    }
+
+    .badge-dot.pulsing {
+      animation: pulse 1.5s infinite alternate;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(0.9); opacity: 0.6; }
+      100% { transform: scale(1.2); opacity: 1; }
+    }
+
+    main {
+      width: 100%;
+      max-width: 800px;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+    }
+
+    @media (min-width: 768px) {
+      main {
+        grid-template-columns: 2fr 3fr;
+      }
+      .span-full {
+        grid-column: 1 / -1;
+      }
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    }
+
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      color: var(--text);
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    label {
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text-muted);
+    }
+
+    input, textarea {
+      background: #09090b;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      color: var(--text);
+      padding: 0.75rem;
+      font-family: var(--font-sans);
+      font-size: 0.95rem;
+      transition: all 0.2s ease;
+      width: 100%;
+    }
+
+    input:focus, textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+    }
+
+    .input-password-wrapper {
+      position: relative;
+    }
+
+    .input-password-wrapper input {
+      padding-right: 2.5rem;
+    }
+
+    .password-toggle {
+      position: absolute;
+      right: 0.75rem;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 0.85rem;
+      user-select: none;
+    }
+
+    button.btn {
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      font-weight: 600;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    button.btn:hover {
+      background: var(--primary-hover);
+    }
+
+    button.btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .console {
+      background: #09090b;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 1rem;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      height: 200px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      color: #34d399;
+    }
+
+    .console-line {
+      line-height: 1.4;
+      word-break: break-all;
+    }
+
+    .console-line.error {
+      color: var(--error);
+    }
+
+    .console-line.info {
+      color: var(--text-muted);
+    }
+
+    .console-line.success {
+      color: var(--success);
+    }
+
+    .console-line.timestamp {
+      color: #60a5fa;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      padding: 1rem 1.25rem;
+      border-radius: 8px;
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      color: var(--text);
+      box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.3);
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      z-index: 100;
+    }
+
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    .toast-success {
+      border-left: 4px solid var(--success);
+    }
+
+    .toast-error {
+      border-left: 4px solid var(--error);
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1><span class="logo-highlight">Cellular</span> Bridge</h1>
+    <div class="badge" id="status-badge">
+      <div class="badge-dot" id="status-dot"></div>
+      <span id="status-text">Checking Status...</span>
+    </div>
+  </header>
+
+  <main>
+    <!-- Config Card -->
+    <div class="card">
+      <div class="card-title">API Authentication</div>
+      <div class="form-group">
+        <label for="api-key-input">Authorization Key (X-API-Key)</label>
+        <div class="input-password-wrapper">
+          <input type="password" id="api-key-input" placeholder="Enter API Key if configured">
+          <button class="password-toggle" id="toggle-key-visibility">Show</button>
+        </div>
+      </div>
+      <button class="btn" id="save-key-btn">Save Key</button>
+    </div>
+
+    <!-- Dispatch Card -->
+    <div class="card">
+      <div class="card-title">Send SMS Gateway</div>
+      
+      <div class="form-group">
+        <label for="phone-input">Phone Number (International Format)</label>
+        <input type="tel" id="phone-input" placeholder="e.g. +639171234567">
+      </div>
+
+      <div class="form-group">
+        <label for="message-input">Message Body</label>
+        <textarea id="message-input" rows="4" placeholder="Enter message text..."></textarea>
+      </div>
+
+      <button class="btn" id="send-sms-btn">Send Message</button>
+    </div>
+
+    <!-- Keys Manager Card -->
+    <div class="card span-full" id="keys-manager-card">
+      <div class="card-title">App API Keys Manager</div>
+      <div id="keys-manager-unauthorized" style="color: var(--text-muted); font-size: 0.9rem;">
+        Please configure and save your Master Admin Key in the API Authentication section to manage application API keys.
+      </div>
+      <div id="keys-manager-content" style="display: none; flex-direction: column; gap: 1.25rem;">
+        <div class="form-group" style="flex-direction: row; gap: 0.5rem; align-items: flex-end; display: flex;">
+          <div style="flex-grow: 1;">
+            <label for="new-app-name">Application Name</label>
+            <input type="text" id="new-app-name" placeholder="e.g. trace-app" style="margin-top: 0.5rem;">
+          </div>
+          <button class="btn" id="generate-key-btn" style="height: 42px; white-space: nowrap;">Generate Key</button>
+        </div>
+        
+        <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem; margin-top: 0.5rem;">
+          <thead>
+            <tr style="border-bottom: 1px solid var(--card-border); color: var(--text-muted); text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.05em;">
+              <th style="padding: 0.75rem 0.5rem;">App Name</th>
+              <th style="padding: 0.75rem 0.5rem;">API Key</th>
+              <th style="padding: 0.75rem 0.5rem; text-align: right;">Action</th>
+            </tr>
+          </thead>
+          <tbody id="keys-table-body">
+            <!-- App keys list will go here dynamically -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Output Terminal -->
+    <div class="card span-full">
+      <div class="card-title">Terminal Console Logs</div>
+      <div class="console" id="console-output">
+        <div class="console-line info">Console initialized. Ready to log operations...</div>
+      </div>
+    </div>
+  </main>
+
+  <div class="toast" id="toast-notification">
+    <span id="toast-message">Notification message</span>
+  </div>
+
+  <script>
+    const statusDot = document.getElementById('status-dot');
+    const statusText = document.getElementById('status-text');
+    const apiKeyInput = document.getElementById('api-key-input');
+    const toggleKeyVisibility = document.getElementById('toggle-key-visibility');
+    const saveKeyBtn = document.getElementById('save-key-btn');
+    const phoneInput = document.getElementById('phone-input');
+    const messageInput = document.getElementById('message-input');
+    const sendSmsBtn = document.getElementById('send-sms-btn');
+    const consoleOutput = document.getElementById('console-output');
+    const toast = document.getElementById('toast-notification');
+    const toastMessage = document.getElementById('toast-message');
+
+    // Keys Manager elements
+    const keysManagerUnauthorized = document.getElementById('keys-manager-unauthorized');
+    const keysManagerContent = document.getElementById('keys-manager-content');
+    const newAppNameInput = document.getElementById('new-app-name');
+    const generateKeyBtn = document.getElementById('generate-key-btn');
+    const keysTableBody = document.getElementById('keys-table-body');
+
+    // Load saved API key
+    const savedKey = localStorage.getItem('cellular_bridge_api_key');
+    if (savedKey) {
+      apiKeyInput.value = savedKey;
+    }
+
+    // Toggle API Key visibility
+    toggleKeyVisibility.addEventListener('click', () => {
+      if (apiKeyInput.type === 'password') {
+        apiKeyInput.type = 'text';
+        toggleKeyVisibility.textContent = 'Hide';
+      } else {
+        apiKeyInput.type = 'password';
+        toggleKeyVisibility.textContent = 'Show';
+      }
+    });
+
+    // Save API key
+    saveKeyBtn.addEventListener('click', () => {
+      localStorage.setItem('cellular_bridge_api_key', apiKeyInput.value);
+      showToast('API Key saved locally', 'success');
+      logToConsole('API Key updated in local storage config.', 'info');
+      refreshKeys();
+    });
+
+    // Log to Console helper
+    function logToConsole(message, type = 'info') {
+      const line = document.createElement('div');
+      line.className = `console-line ${type}`;
+      
+      const timeSpan = document.createElement('span');
+      timeSpan.className = 'console-line timestamp';
+      const now = new Date();
+      timeSpan.textContent = `[${now.toLocaleTimeString()}] `;
+      
+      const textSpan = document.createElement('span');
+      textSpan.textContent = message;
+      
+      line.appendChild(timeSpan);
+      line.appendChild(textSpan);
+      consoleOutput.appendChild(line);
+      consoleOutput.scrollTop = consoleOutput.scrollHeight;
+    }
+
+    // Toast helper
+    function showToast(message, type = 'success') {
+      toast.className = `toast toast-${type} show`;
+      toastMessage.textContent = message;
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 3000);
+    }
+
+    // Health check checker
+    async function checkHealth() {
+      try {
+        const response = await fetch('/health');
+        const data = await response.json();
+        
+        if (response.ok && data.status === 'healthy') {
+          statusDot.style.backgroundColor = 'var(--success)';
+          statusDot.className = 'badge-dot pulsing';
+          statusText.textContent = 'Online / SIM800L Connected';
+        } else {
+          statusDot.style.backgroundColor = 'var(--warning)';
+          statusDot.className = 'badge-dot';
+          statusText.textContent = `SIM800L: ${data.error || 'No response'}`;
+        }
+      } catch (err) {
+        statusDot.style.backgroundColor = 'var(--error)';
+        statusDot.className = 'badge-dot';
+        statusText.textContent = 'Gateway Offline';
+      }
+    }
+
+    // Load App API Keys
+    async function refreshKeys() {
+      const key = localStorage.getItem('cellular_bridge_api_key');
+      if (!key) {
+        keysManagerUnauthorized.style.display = 'block';
+        keysManagerUnauthorized.textContent = 'Please configure and save your Master Admin Key in the API Authentication section to manage application API keys.';
+        keysManagerContent.style.display = 'none';
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/keys', {
+          headers: { 'X-API-Key': key }
+        });
+
+        if (response.ok) {
+          const keys = await response.json();
+          keysManagerUnauthorized.style.display = 'none';
+          keysManagerContent.style.display = 'flex';
+          keysTableBody.innerHTML = '';
+
+          const entries = Object.entries(keys);
+          if (entries.length === 0) {
+            keysTableBody.innerHTML = `
+              <tr>
+                <td colspan="3" style="padding: 1.5rem; text-align: center; color: var(--text-muted);">
+                  No application keys generated yet.
+                </td>
+              </tr>
+            `;
+            return;
+          }
+
+          entries.forEach(([app, secret]) => {
+            const row = document.createElement('tr');
+            row.style.borderBottom = '1px solid var(--card-border)';
+            row.innerHTML = `
+              <td style="padding: 0.75rem 0.5rem; font-weight: 500;">${app}</td>
+              <td style="padding: 0.75rem 0.5rem; font-family: var(--font-mono); color: #34d399;">
+                <span class="key-display" data-full-key="${secret}">${secret.substring(0, 4)}...${secret.substring(secret.length - 4)}</span>
+                <button class="copy-btn" style="background:none; border:none; color:var(--primary); cursor:pointer; font-size:0.75rem; margin-left:0.5rem;">Copy</button>
+              </td>
+              <td style="padding: 0.75rem 0.5rem; text-align: right;">
+                <button class="revoke-btn" data-app="${app}" style="background:none; border:none; color:var(--error); cursor:pointer; font-weight:600; font-size:0.85rem;">Revoke</button>
+              </td>
+            `;
+
+            // Copy event listener
+            row.querySelector('.copy-btn').addEventListener('click', () => {
+              navigator.clipboard.writeText(secret);
+              showToast(`Copied key for ${app} to clipboard`, 'success');
+            });
+
+            // Revoke event listener
+            row.querySelector('.revoke-btn').addEventListener('click', async () => {
+              if (confirm(`Are you sure you want to revoke the API key for "${app}"?`)) {
+                await revokeKey(app);
+              }
+            });
+
+            keysTableBody.appendChild(row);
+          });
+        } else {
+          keysManagerUnauthorized.style.display = 'block';
+          keysManagerUnauthorized.textContent = 'Invalid Master Admin Key. Save a valid Admin Key to manage application API keys.';
+          keysManagerContent.style.display = 'none';
+        }
+      } catch (err) {
+        keysManagerUnauthorized.style.display = 'block';
+        keysManagerUnauthorized.textContent = 'Failed to load key manager. Connection error.';
+        keysManagerContent.style.display = 'none';
+      }
+    }
+
+    async function revokeKey(app) {
+      const key = localStorage.getItem('cellular_bridge_api_key');
+      try {
+        const response = await fetch(`/api/keys/${encodeURIComponent(app)}`, {
+          method: 'DELETE',
+          headers: { 'X-API-Key': key }
+        });
+        if (response.ok) {
+          showToast(`Key for ${app} revoked`, 'success');
+          logToConsole(`Revoked API Key for application: ${app}`, 'info');
+          refreshKeys();
+        } else {
+          showToast(`Revocation failed`, 'error');
+        }
+      } catch (err) {
+        showToast(`Error communicating with backend`, 'error');
+      }
+    }
+
+    generateKeyBtn.addEventListener('click', async () => {
+      const appName = newAppNameInput.value.trim();
+      if (!appName) {
+        showToast('Please enter an application name', 'error');
+        return;
+      }
+
+      const key = localStorage.getItem('cellular_bridge_api_key');
+      try {
+        const response = await fetch('/api/keys', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-API-Key': key
+          },
+          body: JSON.stringify({ app_name: appName })
+        });
+
+        const data = await response.json();
+        if (response.ok) {
+          showToast(`Key generated for ${appName}`, 'success');
+          logToConsole(`Generated API Key for application: ${appName}`, 'success');
+          newAppNameInput.value = '';
+          refreshKeys();
+        } else {
+          showToast(data.detail || 'Key generation failed', 'error');
+        }
+      } catch (err) {
+        showToast(`Error communicating with backend`, 'error');
+      }
+    });
+
+    // Send SMS dispatch handler
+    sendSmsBtn.addEventListener('click', async () => {
+      const phone = phoneInput.value.trim();
+      const message = messageInput.value.trim();
+
+      if (!phone || !message) {
+        showToast('Please fill out all fields', 'error');
+        return;
+      }
+
+      sendSmsBtn.disabled = true;
+      sendSmsBtn.textContent = 'Sending...';
+      logToConsole(`Dispatching SMS request to ${phone}...`, 'info');
+
+      try {
+        const headers = {
+          'Content-Type': 'application/json'
+        };
+        const key = localStorage.getItem('cellular_bridge_api_key');
+        if (key) {
+          headers['X-API-Key'] = key;
+        }
+
+        const response = await fetch('/send-sms', {
+          method: 'POST',
+          headers: headers,
+          body: JSON.stringify({
+            phone_number: phone,
+            message: message
+          })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          showToast('SMS Sent Successfully!', 'success');
+          logToConsole(`SUCCESS: Raw reply -> ${data.raw_response}`, 'success');
+          messageInput.value = ''; // clear message input
+        } else {
+          const errMsg = data.detail || JSON.stringify(data);
+          showToast(`Send Failed: ${response.status}`, 'error');
+          logToConsole(`ERROR (${response.status}): ${errMsg}`, 'error');
+        }
+      } catch (err) {
+        showToast('Network error during dispatch', 'error');
+        logToConsole(`CRITICAL: Request failed. ${err.message}`, 'error');
+      } finally {
+        sendSmsBtn.disabled = false;
+        sendSmsBtn.textContent = 'Send Message';
+      }
+    });
+
+    // Run health checks and load keys on init
+    checkHealth();
+    refreshKeys();
+    setInterval(checkHealth, 10000);
+  </script>
+</body>
+</html>
