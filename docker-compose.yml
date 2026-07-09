@@ -6,9 +6,9 @@ services:
     container_name: cellular-bridge
     ports:
       - "8080:8000"
-#    devices:
+    devices:
       # Map the Raspberry Pi physical UART serial port to the container
-#      - "/dev/ttyAMA0:/dev/ttyAMA0"
+      - "/dev/ttyAMA0:/dev/ttyAMA0"
     security_opt:
       # Some Linux systems require raw peripheral access flags
       - apparmor:unconfined
