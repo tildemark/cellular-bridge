@@ -6,16 +6,17 @@ A Dockerized microservice running on Raspberry Pi 5 to turn a SIM800L cellular H
 
 ## Hardware Wiring & Configuration
 
-Connecting the SIM800L directly to the Raspberry Pi 5's 5V or 3.3V pins is **strongly discouraged**. The SIM800L requires **3.4V to 4.4V** (ideally **4.0V - 4.2V**) and draws transient current spikes up to **2A** during network transmission. This will trigger brownouts or damage the Pi if powered directly.
+Connecting the SIM800L module directly to the Raspberry Pi 5's 5V or 3.3V pins varies depending on the specific breakout board version you are using. The SIM800 module itself requires **3.4V to 4.4V** (ideally **4.0V - 4.2V**) and draws transient current spikes up to **2A** during network transmission.
 
-You **must** use the **LM2596 DC-DC Buck Converter** to safely step down the voltage and provide sufficient current.
+### Option A: Standard SIM800L Breakout Board (Red Board)
+This version does **not** have an onboard 5V regulator. Connecting it directly to the Pi's 5V or 3.3V pins is **strongly discouraged** and will trigger brownouts or damage the Pi. You **must** use the **LM2596 DC-DC Buck Converter** to step down the voltage safely.
 
-### 1. Power Setup (LM2596)
+#### 1. Power Setup (LM2596)
 1. **Input Power**: Connect a DC power source (e.g., 5V to 12V external power supply, or the Pi's 5V Pin 2/4 *only* if using the official 5A Pi 5 power adapter) to the LM2596 `IN+` and `IN-` terminals.
 2. **Calibration**: **Before connecting to the SIM800L**, power on the source and use a multimeter to measure the voltage across the LM2596 `OUT+` and `OUT-` terminals. Turn the brass screw potentiometer until the output reads **exactly 4.0V**.
 3. **Output Power**: Connect `OUT+` to the SIM800L `VCC` pin, and `OUT-` to the SIM800L `GND` pin.
 
-### 2. Pin Connections Table
+#### 2. Pin Connections Table (Option A)
 
 | Component A | Component B | Connection Type / Details |
 | :--- | :--- | :--- |
@@ -27,6 +28,20 @@ You **must** use the **LM2596 DC-DC Buck Converter** to safely step down the vol
 
 > [!WARNING]
 > You must connect the **GND** from the Raspberry Pi 5, the **GND** of the SIM800L, and the **OUT-** of the LM2596 together (Common Ground). Without a shared reference ground, the serial signals will contain noise and fail to register.
+
+---
+
+### Option B: SIM800L EVB (Evaluation Board)
+The SIM800L EVB board includes an onboard voltage regulator. This version can be powered directly from a 5V source (like the Raspberry Pi 5's 5V rail) and does not require an external LM2596 buck converter.
+
+#### Pin Connections Table (Option B)
+
+| Component A | Component B | Connection Type / Details |
+| :--- | :--- | :--- |
+| **Raspberry Pi 5 5V (Pin 2 or 4)** | **SIM800L EVB 5V** | Power Input (Requires stable 5V / high-current power supply on the Pi) |
+| **Raspberry Pi 5 GND (Pin 6)** | **SIM800L EVB GND** | Common Ground |
+| **Raspberry Pi 5 TXD (GPIO 14, Pin 8)** | **SIM800L EVB RXD** | Serial TX -> RX (3.3V logic tolerant) |
+| **Raspberry Pi 5 RXD (GPIO 15, Pin 10)** | **SIM800L EVB TXD** | Serial RX <- TX |
 
 ---
 
