@@ -11,17 +11,33 @@ from pydantic import BaseModel
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("cellular-bridge")
 
+tags_metadata = [
+    {
+        "name": "SMS Operations",
+        "description": "Send SMS messages using the cellular transceiver.",
+    },
+    {
+        "name": "Admin Key Management",
+        "description": "Generate, list, and revoke API keys for client application access. Requires Admin Key.",
+    },
+    {
+        "name": "System",
+        "description": "System health and status endpoints.",
+    },
+]
+
 app = FastAPI(
     title="Cellular Bridge API",
     description="Raspberry Pi 5 + SIM800L cellular gateway for sending and receiving SMS via HTTP REST",
-    version="1.0.0"
+    version="1.0.0",
+    openapi_tags=tags_metadata
 )
 
 import json
 import secrets
 
 # API Key configuration
-API_KEY_HEADER = APIKeyHeader(name="X-API-Key", auto_error=False)
+API_KEY_HEADER = APIKeyHeader(name="X-API-Key", auto_error=False, description="API Key for clients or Master Admin Key")
 CELLULAR_BRIDGE_API_KEY = os.getenv("CELLULAR_BRIDGE_API_KEY")
 
 KEYS_FILE = "data/api_keys.json"
@@ -74,6 +90,25 @@ def verify_admin_key(api_key: str = Security(API_KEY_HEADER)):
 class KeyCreateRequest(BaseModel):
     app_name: str
 
+class KeyCreateResponse(BaseModel):
+    app_name: str
+    key: str
+
+class RevokeResponse(BaseModel):
+    success: bool
+    message: str
+
+class HealthResponse(BaseModel):
+    status: str
+    hardware: str | None = None
+    error: str | None = None
+
+class SMSSuccessResponse(BaseModel):
+    success: bool
+    phone_number: str
+    message: str
+    raw_response: str
+
 SERIAL_PORT = "/dev/ttyAMA0"
 BAUD_RATE = 9600
 
@@ -90,11 +125,24 @@ def send_at_command(ser, cmd, expected_response="OK", delay=0.5, timeout=5):
         return response
     return None
 
-@app.get("/api/keys")
+@app.get(
+    "/api/keys",
+    response_model=dict[str, str],
+    tags=["Admin Key Management"],
+    summary="List all registered API keys",
+    description="Retrieves a list of all client application names and their associated API keys. Requires the Master Admin Key."
+)
 def get_api_keys(admin_key: str = Depends(verify_admin_key)):
     return load_keys()
 
-@app.post("/api/keys")
+@app.post(
+    "/api/keys",
+    response_model=KeyCreateResponse,
+    status_code=status.HTTP_201_CREATED,
+    tags=["Admin Key Management"],
+    summary="Create a new client API key",
+    description="Generates a new API key for the specified application name. Requires the Master Admin Key."
+)
 def create_api_key(payload: KeyCreateRequest, admin_key: str = Depends(verify_admin_key)):
     app_name = payload.app_name.strip()
     if not app_name:
@@ -107,7 +155,13 @@ def create_api_key(payload: KeyCreateRequest, admin_key: str = Depends(verify_ad
     save_keys(keys_data)
     return {"app_name": app_name, "key": new_key}
 
-@app.delete("/api/keys/{app_name}")
+@app.delete(
+    "/api/keys/{app_name}",
+    response_model=RevokeResponse,
+    tags=["Admin Key Management"],
+    summary="Revoke an existing API key",
+    description="Deletes the API key associated with the specified application name. Requires the Master Admin Key."
+)
 def delete_api_key(app_name: str, admin_key: str = Depends(verify_admin_key)):
     keys_data = load_keys()
     if app_name not in keys_data:
@@ -116,7 +170,11 @@ def delete_api_key(app_name: str, admin_key: str = Depends(verify_admin_key)):
     save_keys(keys_data)
     return {"success": True, "message": f"Key for {app_name} revoked successfully"}
 
-@app.get("/", response_class=HTMLResponse)
+@app.get(
+    "/",
+    response_class=HTMLResponse,
+    include_in_schema=False
+)
 def get_dashboard():
     try:
         with open("static/index.html", "r", encoding="utf-8") as f:
@@ -124,7 +182,13 @@ def get_dashboard():
     except Exception as e:
         return HTMLResponse(content=f"<h3>Error loading dashboard: {str(e)}</h3>", status_code=500)
 
-@app.get("/health")
+@app.get(
+    "/health",
+    response_model=HealthResponse,
+    tags=["System"],
+    summary="Service health check",
+    description="Verifies container health and checks physical serial communication with the SIM800L module."
+)
 def health_check():
     try:
         ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=3)
@@ -136,7 +200,13 @@ def health_check():
     except Exception as e:
         return {"status": "error", "error": str(e)}
 
-@app.post("/send-sms")
+@app.post(
+    "/send-sms",
+    response_model=SMSSuccessResponse,
+    tags=["SMS Operations"],
+    summary="Send an SMS message",
+    description="Instructs the SIM800L module to transmit a text message to the specified phone number. Requires a valid API Key or Master Admin Key."
+)
 def send_sms(payload: SMSRequest, api_key: str = Depends(verify_api_key)):
     logger.info(f"Received request to send SMS to {payload.phone_number}")
     try:

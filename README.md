@@ -88,6 +88,20 @@ Before running the container, you must configure the Raspberry Pi's physical GPI
 
 The API runs on port `8080`.
 
+### Interactive API Documentation (Swagger & ReDoc)
+
+FastAPI automatically generates interactive API documentation for the cellular-bridge service. You can access it directly via your web browser:
+
+* **Swagger UI (Interactive Playground)**: `http://[YOUR_PI_IP]:8080/docs`
+  * Features a **"Try it out"** button for every endpoint to send live HTTP requests directly from your browser.
+  * Click **Authorize** at the top right and enter your `X-API-Key` to make authenticated calls.
+* **ReDoc (Static Layout)**: `http://[YOUR_PI_IP]:8080/redoc`
+  * Offers a clean, organized, three-panel layout to read the detailed API schema and integration instructions.
+* **OpenAPI Specification**: `http://[YOUR_PI_IP]:8080/openapi.json`
+  * Download or reference the raw OpenAPI JSON specification to easily import all endpoints into API client tools like **Postman** or **Insomnia**.
+
+---
+
 ### 1. Health Check
 Verifies if the container can reach and communicate with the SIM800L HAT over the physical device mount. This endpoint is public and does not require authentication:
 ```http
