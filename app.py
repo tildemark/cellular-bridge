@@ -125,6 +125,19 @@ def send_at_command(ser, cmd, expected_response="OK", delay=0.5, timeout=5):
         return response
     return None
 
+def get_serial_device(port=SERIAL_PORT, baud=BAUD_RATE, timeout=10):
+    ser = serial.Serial(port, baud, timeout=timeout)
+    ser.reset_input_buffer()
+    ser.reset_output_buffer()
+    # Send ESC to cancel any active SMS input prompt
+    ser.write(b'\x1b')
+    time.sleep(0.2)
+    ser.read_all()
+    # Disable local echo to prevent command loops/responses in output
+    send_at_command(ser, "ATE0", delay=0.2)
+    return ser
+
+
 @app.get(
     "/api/keys",
     response_model=dict[str, str],
@@ -191,7 +204,7 @@ def get_dashboard():
 )
 def health_check():
     try:
-        ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=3)
+        ser = get_serial_device(timeout=3)
         res = send_at_command(ser, "AT")
         ser.close()
         if res:
@@ -210,7 +223,7 @@ def health_check():
 def send_sms(payload: SMSRequest, api_key: str = Depends(verify_api_key)):
     logger.info(f"Received request to send SMS to {payload.phone_number}")
     try:
-        ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=10)
+        ser = get_serial_device(timeout=10)
         
         # Test communication
         if not send_at_command(ser, "AT"):
