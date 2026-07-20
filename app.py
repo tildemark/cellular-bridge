@@ -132,7 +132,11 @@ def send_at_command(ser, cmd, expected_response="OK", timeout=5, delay=None):
     ser.timeout = timeout
     
     while time.time() - start_time < timeout:
-        line = ser.readline().decode(errors="ignore").strip()
+        raw_line = ser.readline()
+        if not raw_line:
+            # readline returned empty bytes due to actual timeout
+            break
+        line = raw_line.decode(errors="ignore").strip()
         if line:
             response_lines.append(line)
             logger.info(f"Command: {cmd} -> Response Line: {line}")
@@ -141,9 +145,6 @@ def send_at_command(ser, cmd, expected_response="OK", timeout=5, delay=None):
                 break
             if "ERROR" in line:
                 break
-        else:
-            # readline returned empty due to timeout
-            break
             
     ser.timeout = orig_timeout
     if found:
