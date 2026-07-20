@@ -1,9 +1,9 @@
 version: '3.8'
 
 services:
-  cellular-bridge:
+  sms-sender:
     build: .
-    container_name: cellular-bridge
+    container_name: sms-sender
     ports:
       - "8080:8000"
     devices:
@@ -13,7 +13,7 @@ services:
       # Some Linux systems require raw peripheral access flags
       - apparmor:unconfined
     environment:
-      - CELLULAR_BRIDGE_API_KEY=${CELLULAR_BRIDGE_API_KEY:-}
+      - SMS_SENDER_API_KEY=${SMS_SENDER_API_KEY:-}
     volumes:
       - ./data:/app/data
     restart: always

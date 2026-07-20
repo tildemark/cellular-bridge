@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cellular Bridge Dashboard</title>
+  <title>SMS Sender Dashboard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -275,7 +275,7 @@
 <body>
 
   <header>
-    <h1><span class="logo-highlight">Cellular</span> Bridge</h1>
+    <h1><span class="logo-highlight">SMS</span> Sender</h1>
     <div class="badge" id="status-badge">
       <div class="badge-dot" id="status-dot"></div>
       <span id="status-text">Checking Status...</span>
@@ -377,7 +377,7 @@
     const keysTableBody = document.getElementById('keys-table-body');
 
     // Load saved API key
-    const savedKey = localStorage.getItem('cellular_bridge_api_key');
+    const savedKey = localStorage.getItem('sms_sender_api_key');
     if (savedKey) {
       apiKeyInput.value = savedKey;
     }
@@ -395,7 +395,7 @@
 
     // Save API key
     saveKeyBtn.addEventListener('click', () => {
-      localStorage.setItem('cellular_bridge_api_key', apiKeyInput.value);
+      localStorage.setItem('sms_sender_api_key', apiKeyInput.value);
       showToast('API Key saved locally', 'success');
       logToConsole('API Key updated in local storage config.', 'info');
       refreshKeys();
@@ -482,7 +482,7 @@
 
     // Load App API Keys
     async function refreshKeys() {
-      const key = localStorage.getItem('cellular_bridge_api_key');
+      const key = localStorage.getItem('sms_sender_api_key');
       if (!key) {
         keysManagerUnauthorized.style.display = 'block';
         keysManagerUnauthorized.textContent = 'Please configure and save your Master Admin Key in the API Authentication section to manage application API keys.';
@@ -560,7 +560,7 @@
     }
 
     async function revokeKey(app) {
-      const key = localStorage.getItem('cellular_bridge_api_key');
+      const key = localStorage.getItem('sms_sender_api_key');
       try {
         const response = await fetch(`/api/keys/${encodeURIComponent(app)}`, {
           method: 'DELETE',
@@ -585,7 +585,7 @@
         return;
       }
 
-      const key = localStorage.getItem('cellular_bridge_api_key');
+      const key = localStorage.getItem('sms_sender_api_key');
       try {
         const response = await fetch('/api/keys', {
           method: 'POST',
@@ -628,7 +628,7 @@
         const headers = {
           'Content-Type': 'application/json'
         };
-        const key = localStorage.getItem('cellular_bridge_api_key');
+        const key = localStorage.getItem('sms_sender_api_key');
         if (key) {
           headers['X-API-Key'] = key;
         }

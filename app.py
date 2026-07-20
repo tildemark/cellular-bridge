@@ -9,7 +9,7 @@ from pydantic import BaseModel
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
-logger = logging.getLogger("cellular-bridge")
+logger = logging.getLogger("sms-sender")
 
 tags_metadata = [
     {
@@ -27,7 +27,7 @@ tags_metadata = [
 ]
 
 app = FastAPI(
-    title="Cellular Bridge API",
+    title="SMS Sender API",
     description="Raspberry Pi 5 + SIM800L cellular gateway for sending and receiving SMS via HTTP REST",
     version="1.0.0",
     openapi_tags=tags_metadata
@@ -38,7 +38,7 @@ import secrets
 
 # API Key configuration
 API_KEY_HEADER = APIKeyHeader(name="X-API-Key", auto_error=False, description="API Key for clients or Master Admin Key")
-CELLULAR_BRIDGE_API_KEY = os.getenv("CELLULAR_BRIDGE_API_KEY")
+SMS_SENDER_API_KEY = os.getenv("SMS_SENDER_API_KEY")
 
 KEYS_FILE = "data/api_keys.json"
 
@@ -66,8 +66,8 @@ def save_keys(keys_data):
         logger.error(f"Error saving keys file: {e}")
 
 def verify_api_key(api_key: str = Security(API_KEY_HEADER)):
-    if CELLULAR_BRIDGE_API_KEY:
-        if api_key == CELLULAR_BRIDGE_API_KEY:
+    if SMS_SENDER_API_KEY:
+        if api_key == SMS_SENDER_API_KEY:
             return api_key
         keys_data = load_keys()
         if api_key in keys_data.values():
@@ -79,8 +79,8 @@ def verify_api_key(api_key: str = Security(API_KEY_HEADER)):
     return api_key
 
 def verify_admin_key(api_key: str = Security(API_KEY_HEADER)):
-    if CELLULAR_BRIDGE_API_KEY:
-        if api_key != CELLULAR_BRIDGE_API_KEY:
+    if SMS_SENDER_API_KEY:
+        if api_key != SMS_SENDER_API_KEY:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Master Admin API Key is required for this operation"

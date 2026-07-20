@@ -1,4 +1,4 @@
-# Cellular Bridge (`cellular-bridge`)
+# SMS Sender (`sms-sender`)
 
 A Dockerized microservice running on Raspberry Pi 5 to turn a SIM800L cellular HAT into a private RESTful SMS API gateway.
 
@@ -73,10 +73,10 @@ Before running the container, you must configure the Raspberry Pi's physical GPI
 
 1. Create a `.env` file in the root of the project to configure your API key:
    ```env
-   CELLULAR_BRIDGE_API_KEY=your_secure_api_key_here
+   SMS_SENDER_API_KEY=your_secure_api_key_here
    ```
 
-2. Start the API service inside the `cellular-bridge` directory:
+2. Start the API service inside the `sms-sender` directory:
    ```bash
    # Build and run the container in detached mode
    docker compose up --build -d
@@ -90,7 +90,7 @@ The API runs on port `8080`.
 
 ### Interactive API Documentation (Swagger & ReDoc)
 
-FastAPI automatically generates interactive API documentation for the cellular-bridge service. You can access it directly via your web browser:
+FastAPI automatically generates interactive API documentation for the sms-sender service. You can access it directly via your web browser:
 
 * **Swagger UI (Interactive Playground)**: `http://[YOUR_PI_IP]:8080/docs`
   * Features a **"Try it out"** button for every endpoint to send live HTTP requests directly from your browser.
@@ -121,7 +121,7 @@ GET http://[YOUR_PI_IP]:8080/health
 ### 2. Send SMS
 Sends a text message to a specified mobile number. Use international phone formatting (e.g., `+639171234567`).
 
-**Note:** If `CELLULAR_BRIDGE_API_KEY` is set in the environment, you must authenticate using the `X-API-Key` header.
+**Note:** If `SMS_SENDER_API_KEY` is set in the environment, you must authenticate using the `X-API-Key` header.
 
 ```http
 POST http://[YOUR_PI_IP]:8080/send-sms
@@ -130,7 +130,7 @@ X-API-Key: your_secure_api_key_here
 
 {
   "phone_number": "+639171234567",
-  "message": "Hello from your Raspberry Pi 5 Cellular Bridge SMS gateway!"
+  "message": "Hello from your Raspberry Pi 5 SMS Sender gateway!"
 }
 ```
 
@@ -139,7 +139,7 @@ X-API-Key: your_secure_api_key_here
 {
   "success": true,
   "phone_number": "+639171234567",
-  "message": "Hello from your Raspberry Pi 5 Cellular Bridge SMS gateway!",
+  "message": "Hello from your Raspberry Pi 5 SMS Sender gateway!",
   "raw_response": "OK\r\n\r\n+CMGS: 42"
 }
 ```
