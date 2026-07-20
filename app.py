@@ -2,6 +2,7 @@ import time
 import logging
 import serial
 import os
+import threading
 from fastapi import FastAPI, HTTPException, Security, Depends, status
 from fastapi.responses import HTMLResponse
 from fastapi.security import APIKeyHeader
@@ -111,18 +112,42 @@ class SMSSuccessResponse(BaseModel):
 
 SERIAL_PORT = "/dev/ttyAMA0"
 BAUD_RATE = 9600
+serial_lock = threading.Lock()
 
 class SMSRequest(BaseModel):
     phone_number: str
     message: str
 
-def send_at_command(ser, cmd, expected_response="OK", delay=0.5, timeout=5):
+def send_at_command(ser, cmd, expected_response="OK", timeout=5, delay=None):
+    logger.info(f"Sending AT Command: {cmd}")
+    # Clear any previous buffers
+    ser.reset_input_buffer()
     ser.write((cmd + "\r\n").encode())
-    time.sleep(delay)
-    response = ser.read_all().decode(errors="ignore")
-    logger.info(f"Command: {cmd} -> Response: {response.strip()}")
-    if expected_response in response:
-        return response
+    
+    response_lines = []
+    start_time = time.time()
+    found = False
+    
+    orig_timeout = ser.timeout
+    ser.timeout = timeout
+    
+    while time.time() - start_time < timeout:
+        line = ser.readline().decode(errors="ignore").strip()
+        if line:
+            response_lines.append(line)
+            logger.info(f"Command: {cmd} -> Response Line: {line}")
+            if expected_response in line:
+                found = True
+                break
+            if "ERROR" in line:
+                break
+        else:
+            # readline returned empty due to timeout
+            break
+            
+    ser.timeout = orig_timeout
+    if found:
+        return "\n".join(response_lines)
     return None
 
 def get_serial_device(port=SERIAL_PORT, baud=BAUD_RATE, timeout=10):
@@ -134,7 +159,7 @@ def get_serial_device(port=SERIAL_PORT, baud=BAUD_RATE, timeout=10):
     time.sleep(0.2)
     ser.read_all()
     # Disable local echo to prevent command loops/responses in output
-    send_at_command(ser, "ATE0", delay=0.2)
+    send_at_command(ser, "ATE0", timeout=2)
     return ser
 
 
@@ -203,15 +228,16 @@ def get_dashboard():
     description="Verifies container health and checks physical serial communication with the SIM800L module."
 )
 def health_check():
-    try:
-        ser = get_serial_device(timeout=3)
-        res = send_at_command(ser, "AT")
-        ser.close()
-        if res:
-            return {"status": "healthy", "hardware": "SIM800L connected"}
-        return {"status": "unhealthy", "error": "SIM800L did not respond to AT"}
-    except Exception as e:
-        return {"status": "error", "error": str(e)}
+    with serial_lock:
+        try:
+            ser = get_serial_device(timeout=3)
+            res = send_at_command(ser, "AT")
+            ser.close()
+            if res:
+                return {"status": "healthy", "hardware": "SIM800L connected"}
+            return {"status": "unhealthy", "error": "SIM800L did not respond to AT"}
+        except Exception as e:
+            return {"status": "error", "error": str(e)}
 
 @app.post(
     "/send-sms",
@@ -221,53 +247,54 @@ def health_check():
     description="Instructs the SIM800L module to transmit a text message to the specified phone number. Requires a valid API Key or Master Admin Key."
 )
 def send_sms(payload: SMSRequest, api_key: str = Depends(verify_api_key)):
-    logger.info(f"Received request to send SMS to {payload.phone_number}")
-    try:
-        ser = get_serial_device(timeout=10)
-        
-        # Test communication
-        if not send_at_command(ser, "AT"):
+    with serial_lock:
+        logger.info(f"Received request to send SMS to {payload.phone_number}")
+        try:
+            ser = get_serial_device(timeout=10)
+            
+            # Test communication
+            if not send_at_command(ser, "AT"):
+                ser.close()
+                raise HTTPException(status_code=502, detail="SIM800L hardware not responding")
+                
+            # Select Text Mode
+            if not send_at_command(ser, "AT+CMGF=1"):
+                ser.close()
+                raise HTTPException(status_code=502, detail="Failed to set GSM text mode")
+                
+            # Set character set to GSM
+            send_at_command(ser, 'AT+CSCS="GSM"')
+                
+            # Send recipient number
+            ser.write(f'AT+CMGS="{payload.phone_number}"\r\n'.encode())
+            time.sleep(0.5)
+            
+            # Write SMS body and terminate with Ctrl+Z (ASCII 26)
+            ser.write((payload.message + chr(26)).encode())
+            logger.info("Transmitting message payload...")
+            
+            # Wait for carrier response (can take several seconds)
+            time.sleep(4)
+            response = ser.read_all().decode(errors="ignore")
             ser.close()
-            raise HTTPException(status_code=502, detail="SIM800L hardware not responding")
             
-        # Select Text Mode
-        if not send_at_command(ser, "AT+CMGF=1"):
-            ser.close()
-            raise HTTPException(status_code=502, detail="Failed to set GSM text mode")
+            logger.info(f"Carrier Response: {response.strip()}")
             
-        # Set character set to GSM
-        send_at_command(ser, 'AT+CSCS="GSM"')
-            
-        # Send recipient number
-        ser.write(f'AT+CMGS="{payload.phone_number}"\r\n'.encode())
-        time.sleep(0.5)
-        
-        # Write SMS body and terminate with Ctrl+Z (ASCII 26)
-        ser.write((payload.message + chr(26)).encode())
-        logger.info("Transmitting message payload...")
-        
-        # Wait for carrier response (can take several seconds)
-        time.sleep(4)
-        response = ser.read_all().decode(errors="ignore")
-        ser.close()
-        
-        logger.info(f"Carrier Response: {response.strip()}")
-        
-        if "+CMGS:" in response:
-            return {
-                "success": True,
-                "phone_number": payload.phone_number,
-                "message": payload.message,
-                "raw_response": response.strip()
-            }
-        else:
-            raise HTTPException(
-                status_code=500,
-                detail=f"SMS rejected by network carrier: {response.strip()}"
-            )
-            
-    except Exception as e:
-        logger.error(f"Error executing SMS dispatch: {e}")
-        if isinstance(e, HTTPException):
-            raise e
-        raise HTTPException(status_code=500, detail=str(e))
+            if "+CMGS:" in response:
+                return {
+                    "success": True,
+                    "phone_number": payload.phone_number,
+                    "message": payload.message,
+                    "raw_response": response.strip()
+                }
+            else:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"SMS rejected by network carrier: {response.strip()}"
+                )
+                
+        except Exception as e:
+            logger.error(f"Error executing SMS dispatch: {e}")
+            if isinstance(e, HTTPException):
+                raise e
+            raise HTTPException(status_code=500, detail=str(e))
