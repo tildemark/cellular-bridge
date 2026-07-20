@@ -161,6 +161,8 @@ def get_serial_device(port=SERIAL_PORT, baud=BAUD_RATE, timeout=10):
     ser.read_all()
     # Disable local echo to prevent command loops/responses in output
     send_at_command(ser, "ATE0", timeout=2)
+    # Enable verbose error reporting
+    send_at_command(ser, "AT+CMEE=2", timeout=2)
     return ser
 
 
@@ -260,8 +262,24 @@ def send_sms(payload: SMSRequest, api_key: str = Depends(verify_api_key)):
                 
             # Select Text Mode
             if not send_at_command(ser, "AT+CMGF=1"):
+                # Collect diagnostic information
+                cpin_res = send_at_command(ser, "AT+CPIN?", timeout=2)
+                creg_res = send_at_command(ser, "AT+CREG?", timeout=2)
+                csq_res = send_at_command(ser, "AT+CSQ", timeout=2)
                 ser.close()
-                raise HTTPException(status_code=502, detail="Failed to set GSM text mode")
+                
+                detail_msg = "Failed to set GSM text mode."
+                diagnostics = []
+                if cpin_res:
+                    diagnostics.append(f"SIM: {cpin_res.replace(chr(10), ' ').replace(chr(13), ' ').strip()}")
+                if creg_res:
+                    diagnostics.append(f"Network: {creg_res.replace(chr(10), ' ').replace(chr(13), ' ').strip()}")
+                if csq_res:
+                    diagnostics.append(f"Signal: {csq_res.replace(chr(10), ' ').replace(chr(13), ' ').strip()}")
+                
+                if diagnostics:
+                    detail_msg += " Diagnostics: " + " | ".join(diagnostics)
+                raise HTTPException(status_code=502, detail=detail_msg)
                 
             # Set character set to GSM
             send_at_command(ser, 'AT+CSCS="GSM"')
