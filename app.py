@@ -143,13 +143,38 @@ def send_at_command(ser, cmd, expected_response="OK", timeout=5, delay=None):
             if expected_response in line:
                 found = True
                 break
-            if "ERROR" in line:
+            if "ERROR" in line or "+CME ERROR:" in line or "+CMS ERROR:" in line:
                 break
             
     ser.timeout = orig_timeout
     if found:
         return "\n".join(response_lines)
     return None
+
+def query_at_command(ser, cmd, timeout=3):
+    logger.info(f"Querying AT Command: {cmd}")
+    ser.reset_input_buffer()
+    ser.write((cmd + "\r\n").encode())
+    
+    response_lines = []
+    start_time = time.time()
+    
+    orig_timeout = ser.timeout
+    ser.timeout = timeout
+    
+    while time.time() - start_time < timeout:
+        raw_line = ser.readline()
+        if not raw_line:
+            break
+        line = raw_line.decode(errors="ignore").strip()
+        if line:
+            response_lines.append(line)
+            logger.info(f"Query: {cmd} -> Response Line: {line}")
+            if "OK" in line or "ERROR" in line or "+CME ERROR:" in line or "+CMS ERROR:" in line:
+                break
+                
+    ser.timeout = orig_timeout
+    return "\n".join(response_lines) if response_lines else None
 
 def get_serial_device(port=SERIAL_PORT, baud=BAUD_RATE, timeout=10):
     ser = serial.Serial(port, baud, timeout=timeout)
@@ -263,9 +288,9 @@ def send_sms(payload: SMSRequest, api_key: str = Depends(verify_api_key)):
             # Select Text Mode
             if not send_at_command(ser, "AT+CMGF=1"):
                 # Collect diagnostic information
-                cpin_res = send_at_command(ser, "AT+CPIN?", timeout=2)
-                creg_res = send_at_command(ser, "AT+CREG?", timeout=2)
-                csq_res = send_at_command(ser, "AT+CSQ", timeout=2)
+                cpin_res = query_at_command(ser, "AT+CPIN?", timeout=2)
+                creg_res = query_at_command(ser, "AT+CREG?", timeout=2)
+                csq_res = query_at_command(ser, "AT+CSQ", timeout=2)
                 ser.close()
                 
                 detail_msg = "Failed to set GSM text mode."
