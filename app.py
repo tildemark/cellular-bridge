@@ -103,6 +103,7 @@ class HealthResponse(BaseModel):
     status: str
     hardware: str | None = None
     error: str | None = None
+    details: dict[str, str] | None = None
 
 class SMSSuccessResponse(BaseModel):
     success: bool
@@ -253,17 +254,70 @@ def get_dashboard():
     response_model=HealthResponse,
     tags=["System"],
     summary="Service health check",
-    description="Verifies container health and checks physical serial communication with the SIM800L module."
+    description="Verifies container health and performs comprehensive hardware diagnostic tests on the SIM800L module."
 )
 def health_check():
     with serial_lock:
         try:
             ser = get_serial_device(timeout=3)
-            res = send_at_command(ser, "AT")
+            
+            # 1. Basic UART test
+            if not send_at_command(ser, "AT"):
+                ser.close()
+                return {
+                    "status": "unhealthy",
+                    "hardware": "SIM800L module defective or not responding to AT commands (Check power & TX/RX wiring)",
+                    "error": "UART Communication Failed"
+                }
+            
+            details = {}
+            
+            # 2. Module Info Check (ATI)
+            ati = query_at_command(ser, "ATI", timeout=2)
+            if ati:
+                details["module_info"] = ati.replace("\r", " ").replace("\n", " ").strip()
+                
+            # 3. Power Supply Voltage Check (AT+CBC)
+            cbc = query_at_command(ser, "AT+CBC", timeout=2)
+            if cbc:
+                details["power_supply"] = cbc.replace("\r", " ").replace("\n", " ").strip()
+                
+            # 4. SIM Card Status (AT+CPIN?)
+            cpin = query_at_command(ser, "AT+CPIN?", timeout=2)
+            sim_ok = False
+            if cpin:
+                cpin_clean = cpin.replace("\r", " ").replace("\n", " ").strip()
+                details["sim_card"] = cpin_clean
+                if "READY" in cpin_clean:
+                    sim_ok = True
+            else:
+                details["sim_card"] = "No response from SIM card"
+                
+            # 5. Signal Quality (AT+CSQ)
+            csq = query_at_command(ser, "AT+CSQ", timeout=2)
+            if csq:
+                details["signal_quality"] = csq.replace("\r", " ").replace("\n", " ").strip()
+                
+            # 6. Network Registration (AT+CREG?)
+            creg = query_at_command(ser, "AT+CREG?", timeout=2)
+            if creg:
+                details["network_registration"] = creg.replace("\r", " ").replace("\n", " ").strip()
+                
             ser.close()
-            if res:
-                return {"status": "healthy", "hardware": "SIM800L connected"}
-            return {"status": "unhealthy", "error": "SIM800L did not respond to AT"}
+            
+            if not sim_ok:
+                return {
+                    "status": "degraded",
+                    "hardware": "SIM800L operational, but SIM card is defective, missing, or locked",
+                    "error": details.get("sim_card", "SIM card error"),
+                    "details": details
+                }
+                
+            return {
+                "status": "healthy",
+                "hardware": "SIM800L module fully functional",
+                "details": details
+            }
         except Exception as e:
             return {"status": "error", "error": str(e)}
 
