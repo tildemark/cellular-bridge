@@ -279,6 +279,18 @@ def get_dashboard(auth: HTTPBasicCredentials = Depends(verify_dashboard_auth)):
     except Exception as e:
         return HTMLResponse(content=f"<h3>Error loading dashboard: {str(e)}</h3>", status_code=500)
 
+@app.get(
+    "/integration",
+    response_class=HTMLResponse,
+    include_in_schema=False
+)
+def get_integration_guide(auth: HTTPBasicCredentials = Depends(verify_dashboard_auth)):
+    try:
+        with open("static/integration.html", "r", encoding="utf-8") as f:
+            return HTMLResponse(content=f.read(), status_code=200)
+    except Exception as e:
+        return HTMLResponse(content=f"<h3>Error loading integration guide: {str(e)}</h3>", status_code=500)
+
 @app.get("/docs", include_in_schema=False)
 def get_swagger_documentation(auth: HTTPBasicCredentials = Depends(verify_dashboard_auth)):
     return get_swagger_ui_html(openapi_url="/openapi.json", title="SMS Sender API - Docs")

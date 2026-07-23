@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SMS Sender API - Integration Guide</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #09090b;
+      --card: #18181b;
+      --card-border: #27272a;
+      --text: #fafafa;
+      --text-muted: #a1a1aa;
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --success: #22c55e;
+      --error: #ef4444;
+      --warning: #f59e0b;
+      --radius: 12px;
+      --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem;
+    }
+
+    header {
+      width: 100%;
+      max-width: 960px;
+      margin-bottom: 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .logo-container {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.025em;
+    }
+
+    h1 span.logo-highlight {
+      color: var(--primary);
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .nav-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      color: var(--text);
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }
+
+    .nav-btn:hover {
+      background: #27272a;
+      border-color: #3f3f46;
+    }
+
+    .nav-btn.primary {
+      background: var(--primary);
+      border-color: var(--primary);
+    }
+
+    .nav-btn.primary:hover {
+      background: var(--primary-hover);
+    }
+
+    main {
+      width: 100%;
+      max-width: 960px;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    }
+
+    .card-title {
+      font-size: 1.15rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .subtitle {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-top: -0.5rem;
+    }
+
+    .config-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1rem;
+    }
+
+    @media (min-width: 640px) {
+      .config-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    label {
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--text-muted);
+    }
+
+    input {
+      background: #09090b;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      color: var(--text);
+      padding: 0.65rem 0.85rem;
+      font-family: var(--font-mono);
+      font-size: 0.875rem;
+      width: 100%;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    /* Tabs Styling */
+    .tabs-container {
+      display: flex;
+      gap: 0.5rem;
+      border-bottom: 1px solid var(--card-border);
+      padding-bottom: 0.5rem;
+      overflow-x: auto;
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 0.5rem 0.9rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s ease;
+      font-family: var(--font-sans);
+    }
+
+    .tab-btn:hover {
+      color: var(--text);
+      background: #27272a;
+    }
+
+    .tab-btn.active {
+      color: white;
+      background: var(--primary);
+    }
+
+    .tab-content {
+      display: none;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .tab-content.active {
+      display: flex;
+    }
+
+    .code-block-wrapper {
+      position: relative;
+      background: #09090b;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .code-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.5rem 1rem;
+      background: #121215;
+      border-bottom: 1px solid var(--card-border);
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .copy-btn {
+      background: #27272a;
+      border: 1px solid var(--card-border);
+      color: var(--text);
+      padding: 0.25rem 0.6rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+
+    .copy-btn:hover {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: white;
+    }
+
+    pre {
+      padding: 1rem;
+      overflow-x: auto;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      line-height: 1.5;
+      color: #e4e4e7;
+    }
+
+    code {
+      font-family: var(--font-mono);
+    }
+
+    .table-wrapper {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+      text-align: left;
+    }
+
+    th {
+      border-bottom: 1px solid var(--card-border);
+      padding: 0.75rem;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    td {
+      padding: 0.75rem;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .code-badge {
+      font-family: var(--font-mono);
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      background: #27272a;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      padding: 0.75rem 1.25rem;
+      border-radius: 8px;
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-left: 4px solid var(--success);
+      color: var(--text);
+      box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.3);
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      z-index: 100;
+      font-size: 0.875rem;
+    }
+
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="logo-container">
+      <h1><span class="logo-highlight">SMS</span> Sender Integration Guide</h1>
+    </div>
+    <div class="nav-links">
+      <a href="/" class="nav-btn">← Back to Dashboard</a>
+      <a href="/docs" class="nav-btn primary" target="_blank">OpenAPI Docs</a>
+    </div>
+  </header>
+
+  <main>
+    <!-- Interactive Config Card -->
+    <div class="card">
+      <div class="card-title">⚡ Interactive Code Customizer</div>
+      <div class="subtitle">Enter your Gateway Base URL and API Key below to dynamically customize all integration code examples:</div>
+      
+      <div class="config-grid">
+        <div class="form-group">
+          <label for="cfg-base-url">Gateway Base URL</label>
+          <input type="text" id="cfg-base-url" value="http://localhost:8080">
+        </div>
+        <div class="form-group">
+          <label for="cfg-api-key">Your API Key (X-API-Key)</label>
+          <input type="text" id="cfg-api-key" value="your_client_api_key_here">
+        </div>
+      </div>
+    </div>
+
+    <!-- Code Examples Card -->
+    <div class="card">
+      <div class="card-title">🚀 Code Integration Snippets</div>
+
+      <div class="tabs-container">
+        <button class="tab-btn active" onclick="switchTab('node')">Node.js / TS</button>
+        <button class="tab-btn" onclick="switchTab('php')">PHP (Vanilla)</button>
+        <button class="tab-btn" onclick="switchTab('laravel')">Laravel</button>
+        <button class="tab-btn" onclick="switchTab('codeigniter')">CodeIgniter</button>
+        <button class="tab-btn" onclick="switchTab('python')">Python</button>
+        <button class="tab-btn" onclick="switchTab('curl')">cURL CLI</button>
+      </div>
+
+      <!-- NODE.JS / TYPESCRIPT TAB -->
+      <div class="tab-content active" id="tab-node">
+        <div class="code-block-wrapper">
+          <div class="code-header">
+            <span>Node.js / TypeScript (Native Fetch)</span>
+            <button class="copy-btn" onclick="copyCode('code-node-fetch')">Copy Code</button>
+          </div>
+          <pre><code id="code-node-fetch"></code></pre>
+        </div>
+
+        <div class="code-block-wrapper">
+          <div class="code-header">
+            <span>Node.js / TypeScript (Axios)</span>
+            <button class="copy-btn" onclick="copyCode('code-node-axios')">Copy Code</button>
+          </div>
+          <pre><code id="code-node-axios"></code></pre>
+        </div>
+      </div>
+
+      <!-- PHP VANILLA TAB -->
+      <div class="tab-content" id="tab-php">
+        <div class="code-block-wrapper">
+          <div class="code-header">
+            <span>PHP (cURL)</span>
+            <button class="copy-btn" onclick="copyCode('code-php-curl')">Copy Code</button>
+          </div>
+          <pre><code id="code-php-curl"></code></pre>
+        </div>
+
+        <div class="code-block-wrapper">
+          <div class="code-header">
+            <span>PHP (GuzzleHTTP)</span>
+            <button class="copy-btn" onclick="copyCode('code-php-guzzle')">Copy Code</button>
+          </div>
+          <pre><code id="code-php-guzzle"></code></pre>
+        </div>
+      </div>
+
+      <!-- LARAVEL TAB -->
+      <div class="tab-content" id="tab-laravel">
+        <div class="code-block-wrapper">
+          <div class="code-header">
+            <span>Laravel HTTP Client (Illuminate\Support\Facades\Http)</span>
+            <button class="copy-btn" onclick="copyCode('code-laravel')">Copy Code</button>
+          </div>
+          <pre><code id="code-laravel"></code></pre>
+        </div>
+      </div>
+
+      <!-- CODEIGNITER TAB -->
+      <div class="tab-content" id="tab-codeigniter">
+        <div class="code-block-wrapper">
+          <div class="code-header">
+            <span>CodeIgniter 4 (CURLRequest Service)</span>
+            <button class="copy-btn" onclick="copyCode('code-ci4')">Copy Code</button>
+          </div>
+          <pre><code id="code-ci4"></code></pre>
+        </div>
+
+        <div class="code-block-wrapper">
+          <div class="code-header">
+            <span>CodeIgniter 3 (cURL Helper / Native)</span>
+            <button class="copy-btn" onclick="copyCode('code-ci3')">Copy Code</button>
+          </div>
+          <pre><code id="code-ci3"></code></pre>
+        </div>
+      </div>
+
+      <!-- PYTHON TAB -->
+      <div class="tab-content" id="tab-python">
+        <div class="code-block-wrapper">
+          <div class="code-header">
+            <span>Python (requests)</span>
+            <button class="copy-btn" onclick="copyCode('code-py-requests')">Copy Code</button>
+          </div>
+          <pre><code id="code-py-requests"></code></pre>
+        </div>
+
+        <div class="code-block-wrapper">
+          <div class="code-header">
+            <span>Python Async (httpx)</span>
+            <button class="copy-btn" onclick="copyCode('code-py-httpx')">Copy Code</button>
+          </div>
+          <pre><code id="code-py-httpx"></code></pre>
+        </div>
+      </div>
+
+      <!-- CURL CLI TAB -->
+      <div class="tab-content" id="tab-curl">
+        <div class="code-block-wrapper">
+          <div class="code-header">
+            <span>cURL Command Line Interface</span>
+            <button class="copy-btn" onclick="copyCode('code-curl')">Copy Code</button>
+          </div>
+          <pre><code id="code-curl"></code></pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- Response Specs Card -->
+    <div class="card">
+      <div class="card-title">📡 Endpoint Specification</div>
+      <div class="subtitle">API Endpoint: <span class="code-badge">POST /send-sms</span></div>
+
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Status Code</th>
+              <th>Description</th>
+              <th>Sample Response Body</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="code-badge" style="color: var(--success)">200 OK</span></td>
+              <td>SMS message successfully submitted to cellular network</td>
+              <td><span class="code-badge">{"success": true, "phone_number": "+639171234567", "message": "...", "raw_response": "+CMGS: 42 OK"}</span></td>
+            </tr>
+            <tr>
+              <td><span class="code-badge" style="color: var(--error)">403 Forbidden</span></td>
+              <td>Invalid or missing <span class="code-badge">X-API-Key</span> header</td>
+              <td><span class="code-badge">{"detail": "Invalid or missing API Key"}</span></td>
+            </tr>
+            <tr>
+              <td><span class="code-badge" style="color: var(--error)">502 Bad Gateway</span></td>
+              <td>SIM800L hardware error or SIM card issue</td>
+              <td><span class="code-badge">{"detail": "Failed to set GSM text mode. Diagnostics: ..."}</span></td>
+            </tr>
+            <tr>
+              <td><span class="code-badge" style="color: var(--error)">500 Server Error</span></td>
+              <td>Hardware brownout reset or carrier rejection</td>
+              <td><span class="code-badge">{"detail": "Hardware Brownout Reset: SIM800L rebooted ..."}</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <div class="toast" id="toast">
+    <span id="toast-msg">Copied to clipboard!</span>
+  </div>
+
+  <script>
+    const baseUrlInput = document.getElementById('cfg-base-url');
+    const apiKeyInput = document.getElementById('cfg-api-key');
+    const toast = document.getElementById('toast');
+    const toastMsg = document.getElementById('toast-msg');
+
+    // Auto load base URL from current origin if served directly
+    if (window.location.origin && !window.location.origin.includes('file://')) {
+      baseUrlInput.value = window.location.origin;
+    }
+
+    // Auto load API key from local storage if configured in dashboard
+    const savedKey = localStorage.getItem('sms_sender_api_key');
+    if (savedKey) {
+      apiKeyInput.value = savedKey;
+    }
+
+    function getBaseUrl() {
+      let url = baseUrlInput.value.trim() || 'http://localhost:8080';
+      return url.replace(/\/+$/, '');
+    }
+
+    function getApiKey() {
+      return apiKeyInput.value.trim() || 'your_api_key_here';
+    }
+
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+      
+      event.target.classList.add('active');
+      document.getElementById(`tab-${tabId}`).classList.add('active');
+    }
+
+    function showToast(msg) {
+      toastMsg.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2500);
+    }
+
+    function copyCode(elementId) {
+      const text = document.getElementById(elementId).textContent;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => showToast('Copied code to clipboard!'));
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        showToast('Copied code to clipboard!');
+      }
+    }
+
+    function updateSnippets() {
+      const url = getBaseUrl();
+      const key = getApiKey();
+
+      // Node.js Fetch
+      document.getElementById('code-node-fetch').textContent = 
+`async function sendSMS(phoneNumber, message) {
+  const response = await fetch('${url}/send-sms', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-API-Key': '${key}'
+    },
+    body: JSON.stringify({
+      phone_number: phoneNumber,
+      message: message
+    })
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.detail || 'Failed to send SMS');
+  }
+  return data;
+}
+
+// Example usage
+sendSMS('+639171234567', 'Hello from Node.js SMS Gateway!')
+  .then(res => console.log('SMS Sent:', res))
+  .catch(err => console.error('SMS Error:', err));`;
+
+      // Node.js Axios
+      document.getElementById('code-node-axios').textContent = 
+`import axios from 'axios';
+
+async function sendSMS(phoneNumber, message) {
+  try {
+    const response = await axios.post('${url}/send-sms', {
+      phone_number: phoneNumber,
+      message: message
+    }, {
+      headers: {
+        'X-API-Key': '${key}'
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('SMS Error:', error.response?.data || error.message);
+    throw error;
+  }
+}`;
+
+      // PHP cURL
+      document.getElementById('code-php-curl').textContent = 
+`<?php
+
+function sendSMS($phoneNumber, $message) {
+    $url = '${url}/send-sms';
+    $apiKey = '${key}';
+
+    $payload = json_encode([
+        'phone_number' => $phoneNumber,
+        'message' => $message
+    ]);
+
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Content-Type: application/json',
+        'X-API-Key: ' . $apiKey
+    ]);
+
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($httpCode !== 200) {
+        throw new Exception("SMS Failed ({$httpCode}): " . $response);
+    }
+
+    return json_decode($response, true);
+}
+
+// Example Usage
+try {
+    $result = sendSMS('+639171234567', 'Hello from PHP!');
+    print_r($result);
+} catch (Exception $e) {
+    echo "Error: " . $e->getMessage();
+}`;
+
+      // PHP Guzzle
+      document.getElementById('code-php-guzzle').textContent = 
+`<?php
+use GuzzleHttp\\Client;
+
+$client = new Client();
+$response = $client->post('${url}/send-sms', [
+    'headers' => [
+        'X-API-Key' => '${key}',
+        'Content-Type' => 'application/json'
+    ],
+    'json' => [
+        'phone_number' => '+639171234567',
+        'message' => 'Hello from GuzzleHTTP!'
+    ]
+]);
+
+$data = json_decode($response->getBody(), true);
+print_r($data);`;
+
+      // Laravel
+      document.getElementById('code-laravel').textContent = 
+`<?php
+namespace App\\Services;
+
+use Illuminate\\Support\\Facades\\Http;
+
+class SMSService
+{
+    public function send(string $phoneNumber, string $message)
+    {
+        $response = Http::withHeaders([
+            'X-API-Key' => '${key}',
+        ])->post('${url}/send-sms', [
+            'phone_number' => $phoneNumber,
+            'message' => $message,
+        ]);
+
+        if ($response->failed()) {
+            throw new \\Exception($response->json('detail') ?? 'SMS dispatch failed');
+        }
+
+        return $response->json();
+    }
+}`;
+
+      // CodeIgniter 4
+      document.getElementById('code-ci4').textContent = 
+`<?php
+namespace App\\Controllers;
+
+use CodeIgniter\\Controller;
+
+class SMSController extends Controller
+{
+    public function sendSMS()
+    {
+        $client = \\Config\\Services::curlrequest();
+
+        $response = $client->post('${url}/send-sms', [
+            'headers' => [
+                'X-API-Key' => '${key}',
+                'Content-Type' => 'application/json'
+            ],
+            'json' => [
+                'phone_number' => '+639171234567',
+                'message' => 'Hello from CodeIgniter 4!'
+            ],
+            'http_errors' => false
+        ]);
+
+        if ($response->getStatusCode() === 200) {
+            return $this->response->setJSON(json_decode($response->getBody()));
+        } else {
+            return $this->response->setStatusCode($response->getStatusCode())
+                                  ->setJSON(['error' => $response->getBody()]);
+        }
+    }
+}`;
+
+      // CodeIgniter 3
+      document.getElementById('code-ci3').textContent = 
+`<?php
+defined('BASEPATH') OR exit('No direct script access allowed');
+
+class Sms_model extends CI_Model {
+
+    public function send_sms($phone_number, $message) {
+        $url = '${url}/send-sms';
+        $api_key = '${key}';
+
+        $data = json_encode(array(
+            'phone_number' => $phone_number,
+            'message' => $message
+        ));
+
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+            'Content-Type: application/json',
+            'X-API-Key: ' . $api_key
+        ));
+
+        $result = curl_exec($ch);
+        $http_status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($http_status == 200) {
+            return json_decode($result, true);
+        }
+        return false;
+    }
+}`;
+
+      // Python Requests
+      document.getElementById('code-py-requests').textContent = 
+`import requests
+
+def send_sms(phone_number: str, message: str):
+    url = "${url}/send-sms"
+    headers = {
+        "X-API-Key": "${key}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "phone_number": phone_number,
+        "message": message
+    }
+    
+    response = requests.post(url, json=payload, headers=headers)
+    response.raise_for_status()
+    return response.json()
+
+# Example Usage
+try:
+    result = send_sms("+639171234567", "Hello from Python!")
+    print("SMS Sent:", result)
+except requests.exceptions.HTTPError as err:
+    print("Error:", err.response.json())`;
+
+      // Python httpx
+      document.getElementById('code-py-httpx').textContent = 
+`import httpx
+import asyncio
+
+async def send_sms_async(phone_number: str, message: str):
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "${url}/send-sms",
+            headers={"X-API-Key": "${key}"},
+            json={"phone_number": phone_number, "message": message}
+        )
+        response.raise_for_status()
+        return response.json()
+
+# Run async function
+# asyncio.run(send_sms_async("+639171234567", "Async Python SMS"))`;
+
+      // cURL CLI
+      document.getElementById('code-curl').textContent = 
+`curl -X POST "${url}/send-sms" \\
+  -H "Content-Type: application/json" \\
+  -H "X-API-Key: ${key}" \\
+  -d '{
+    "phone_number": "+639171234567",
+    "message": "Hello from cURL command line!"
+  }'`;
+    }
+
+    baseUrlInput.addEventListener('input', updateSnippets);
+    apiKeyInput.addEventListener('input', updateSnippets);
+
+    // Initial population
+    updateSnippets();
+  </script>
+</body>
+</html>

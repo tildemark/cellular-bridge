@@ -98,6 +98,15 @@ Before running the container, you must configure the Raspberry Pi's physical GPI
 
 The API runs on port `8080`.
 
+### Multi-Language Integration Guide & Playground
+
+Access ready-to-use, copyable code integration snippets tailored for your language and framework:
+
+* **Interactive Integration Guide**: `http://[YOUR_PI_IP]:8080/integration`
+  * Features live code customizers and pre-built code snippets for **Node.js**, **TypeScript**, **PHP (cURL & Guzzle)**, **Laravel**, **CodeIgniter 3 & 4**, **Python**, and **cURL CLI**.
+
+---
+
 ### Interactive API Documentation (Swagger & ReDoc)
 
 FastAPI automatically generates interactive API documentation for the sms-sender service. You can access it directly via your web browser:
