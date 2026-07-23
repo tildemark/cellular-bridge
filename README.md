@@ -1,68 +1,72 @@
 # SMS Sender (`sms-sender`)
 
-A Dockerized microservice running on Raspberry Pi 5 to turn a SIM800L cellular HAT into a private RESTful SMS API gateway.
+A Dockerized RESTful SMS API Gateway microservice running on Raspberry Pi 5 using a SIM800L cellular module.
 
 ---
 
 ## Hardware Wiring & Configuration
 
-Connecting the SIM800L module directly to the Raspberry Pi 5's 5V or 3.3V pins varies depending on the specific breakout board version you are using. The SIM800 module itself requires **3.4V to 4.4V** (ideally **4.0V - 4.2V**) and draws transient current spikes up to **2A** during network transmission.
+Connecting the SIM800L module to the Raspberry Pi 5 requires a stable power supply and correct serial wiring. The SIM800 module itself operates at **3.4V to 4.4V** (ideally **4.0V**) and draws transient current surges up to **2.0 Amps** during cellular transmission.
+
+---
 
 ### Option A: Standard SIM800L Breakout Board (Red Board)
-This version does **not** have an onboard 5V regulator. Connecting it directly to the Pi's 5V or 3.3V pins is **strongly discouraged** and will trigger brownouts or damage the Pi. You **must** use the **LM2596 DC-DC Buck Converter** to step down the voltage safely.
+This version does **not** have an onboard 5V regulator. Connecting it directly to the Pi's 5V or 3.3V pins will damage the module or trigger Pi brownouts. You **must** use an **LM2596 DC-DC Buck Converter** to step down the voltage safely to 4.0V.
 
 #### 1. Power Setup (LM2596)
-1. **Input Power**: Connect a DC power source (e.g., 5V to 12V external power supply, or the Pi's 5V Pin 2/4 *only* if using the official 5A Pi 5 power adapter) to the LM2596 `IN+` and `IN-` terminals.
-2. **Calibration**: **Before connecting to the SIM800L**, power on the source and use a multimeter to measure the voltage across the LM2596 `OUT+` and `OUT-` terminals. Turn the brass screw potentiometer until the output reads **exactly 4.0V**.
-3. **Output Power**: Connect `OUT+` to the SIM800L `VCC` pin, and `OUT-` to the SIM800L `GND` pin.
+1. **Input Power**: Connect a DC power source (5V-12V external power supply, or the Pi 5's 5V Pin 2/4 if using the official 27W 5A Pi adapter) to `IN+` and `IN-` on the LM2596.
+2. **Calibration**: Before connecting to the SIM800L, power on the LM2596 and measure `OUT+` / `OUT-` with a multimeter. Adjust the brass screw until it reads **exactly 4.0V DC**.
+3. **Output**: Connect `OUT+` to SIM800L `VCC`, and `OUT-` to SIM800L `GND`.
 
 #### 2. Pin Connections Table (Option A)
 
 | Component A | Component B | Connection Type / Details |
 | :--- | :--- | :--- |
-| **LM2596 OUT+** | **SIM800L VCC** | Power (regulated 4.0V) |
+| **LM2596 OUT+** | **SIM800L VCC** | Power Input (Regulated 4.0V) |
 | **LM2596 OUT-** | **SIM800L GND** | Power Ground |
 | **Raspberry Pi 5 GND (Pin 6)** | **SIM800L GND** | **Common Ground** (CRITICAL for serial comms) |
-| **Raspberry Pi 5 TXD (GPIO 14, Pin 8)** | **SIM800L RXD** | Serial TX -> RX (3.3V logic tolerant) |
-| **Raspberry Pi 5 RXD (GPIO 15, Pin 10)** | **SIM800L TXD** | Serial RX <- TX |
+| **Raspberry Pi 5 TXD (GPIO 14, Pin 8)** | **SIM800L RXD** | Serial Data (Pi TX -> SIM800 RX) |
+| **Raspberry Pi 5 RXD (GPIO 15, Pin 10)** | **SIM800L TXD** | Serial Data (Pi RX <- SIM800 TX) |
 
 > [!WARNING]
-> You must connect the **GND** from the Raspberry Pi 5, the **GND** of the SIM800L, and the **OUT-** of the LM2596 together (Common Ground). Without a shared reference ground, the serial signals will contain noise and fail to register.
+> You must connect the **GND** from the Raspberry Pi 5, the **GND** of the SIM800L, and the **OUT-** of the LM2596 together (**Common Ground**). Without a shared reference ground, serial data signals will corrupt.
 
 ---
 
 ### Option B: SIM800L EVB (Evaluation Board)
-The SIM800L EVB board includes an onboard voltage regulator. This version can be powered directly from a 5V source (like the Raspberry Pi 5's 5V rail) and does not require an external LM2596 buck converter.
+The SIM800L EVB board includes an onboard 5V-to-4V regulator and transistor level shifters. It can be powered directly from the Raspberry Pi 5's 5V GPIO rail.
 
 #### Pin Connections Table (Option B)
 
-| Component A | Component B | Connection Type / Details |
+| Raspberry Pi 5 Pin | SIM800L EVB Pin | Function / Details |
 | :--- | :--- | :--- |
-| **Raspberry Pi 5 5V (Pin 2 or 4)** | **SIM800L EVB 5V** | Power Input (Requires stable 5V / high-current power supply on the Pi) |
-| **Raspberry Pi 5 GND (Pin 6)** | **SIM800L EVB GND** | Common Ground |
-| **Raspberry Pi 5 TXD (GPIO 14, Pin 8)** | **SIM800L EVB RXD** | Serial TX -> RX (3.3V logic tolerant) |
-| **Raspberry Pi 5 RXD (GPIO 15, Pin 10)** | **SIM800L EVB TXD** | Serial RX <- TX |
+| **Pin 2 or Pin 4 (5V)** | **`5V`** | 5V Power Input |
+| **Pin 6 (GND)** | **`GND`** | Power & Signal Ground |
+| **Pin 1 (3.3V)** | **`VDD`** | **Level Shifter Reference** (CRITICAL to prevent floating logic resets) |
+| **Pin 8 (GPIO 14 / TXD)** | **`RXD`** | Serial Data (Pi TX -> EVB RX) |
+| **Pin 10 (GPIO 15 / RXD)** | **`TXD`** | Serial Data (Pi RX <- EVB TX) |
+
+> [!TIP]
+> **Power Spike Protection (1000µF Capacitor)**:
+> Solder a **1000µF or 2200µF (6.3V/10V) electrolytic capacitor** directly across `VCC`/`5V` and `GND` pins on the SIM800L board. This acts as an energy buffer for 2.0A RF transmit spikes, preventing module brownout resets (`Call Ready` errors).
 
 ---
 
-### 3. Raspberry Pi 5 Serial Configuration
+### Raspberry Pi 5 Serial Port Configuration
 
-Before running the container, you must configure the Raspberry Pi's physical GPIO serial pins:
+Before launching the Docker container, enable the physical GPIO serial UART on your Raspberry Pi:
 
 1. SSH into your Raspberry Pi 5.
-2. Run the Raspberry Pi configuration utility:
-   ```bash
-   sudo raspi-config
-   ```
+2. Run `sudo raspi-config`.
 3. Navigate to **Interface Options** -> **Serial Port**.
-4. When prompted:
-   - *Would you like a login shell to be accessible over serial?* -> Select **No** (frees up TX/RX pins).
+4. Prompts:
+   - *Would you like a login shell to be accessible over serial?* -> Select **No**.
    - *Would you like the serial port hardware to be enabled?* -> Select **Yes**.
-5. Save, exit, and reboot your Raspberry Pi:
+5. Save, exit, and reboot:
    ```bash
    sudo reboot
    ```
-6. Verify the serial interface exists. It is usually mapped to:
+6. Verify the serial interface exists (`/dev/ttyAMA0`):
    ```bash
    ls -la /dev/ttyAMA0
    ```
@@ -71,87 +75,79 @@ Before running the container, you must configure the Raspberry Pi's physical GPI
 
 ## Deployment (via Docker Compose)
 
-1. Create a `.env` file in the root of the project to configure dashboard authentication and API keys:
+1. Create a `.env` file in the root of the project to configure authentication:
    ```env
-   # Protect the Dashboard (HTTP Basic Auth for public IP hosting)
+   # Web Dashboard HTTP Basic Auth (for public IP hosting)
    DASHBOARD_USERNAME=admin
    DASHBOARD_PASSWORD=your_secure_dashboard_password
 
-   # Master Admin API Key for API Key management and SMS sending
+   # Master Admin API Key for API Key management and SMS dispatch
    SMS_SENDER_API_KEY=your_secure_master_api_key
    ```
 
-2. Start the API service inside the `sms-sender` directory:
+2. Start the API gateway inside the `sms-sender` directory:
    ```bash
-   # Build and run the container in detached mode
    docker compose up --build -d
    ```
 
 > [!TIP]
 > **Public IP Security Best Practices**:
-> - When deploying on a public IP, always set `DASHBOARD_USERNAME` and `DASHBOARD_PASSWORD` to prevent unauthorized visitors from accessing the dashboard and API documentation.
-> - Run the service behind a reverse proxy (e.g. Nginx, Caddy, or Cloudflare Tunnel) to enable HTTPS/TLS encryption.
+> - Set `DASHBOARD_USERNAME` and `DASHBOARD_PASSWORD` to protect `/`, `/history`, `/integration`, and `/docs` when exposing the service to a public IP.
+> - Deploy behind a reverse proxy (Nginx, Caddy, Cloudflare Tunnel) to enable HTTPS encryption.
 
 ---
 
-## API Documentation
+## Gateway Web UI & Features
 
-The API runs on port `8080`.
+The API service runs on port `8080`:
 
-### SMS History & Credit Tracker
-
-Monitor sent messages, carrier references, and total credits used:
-
-* **SMS Dispatch History Web UI**: `http://[YOUR_PI_IP]:8080/history`
-  * Features credit usage metrics, search/filtering by phone number or message body, and CSV export.
-* **SMS History API Endpoint**: `GET http://[YOUR_PI_IP]:8080/api/history`
-  * Returns JSON payload containing total sent counts, success/failure metrics, and dispatch records.
+* **Web Dashboard**: `http://[YOUR_PI_IP]:8080/`
+  * Graphical interface for configuring API keys, testing SMS dispatch, and viewing real-time terminal logs.
+* **SMS History & Credit Tracker**: `http://[YOUR_PI_IP]:8080/history`
+  * Displays dispatch history, credit usage metrics, search/filtering, request origin tracking (`Dashboard` vs `App Name`), and CSV export.
+* **Multi-Language Integration Guide**: `http://[YOUR_PI_IP]:8080/integration`
+  * Interactive code customizers and pre-built code snippets for **Node.js**, **TypeScript**, **PHP (cURL & Guzzle)**, **Laravel**, **CodeIgniter 3 & 4**, **Python**, and **cURL CLI**.
 
 ---
 
-### Interactive API Documentation (Swagger & ReDoc)
+## API Reference
 
-FastAPI automatically generates interactive API documentation for the sms-sender service. You can access it directly via your web browser:
+### 1. Service Health Check & Diagnostics
+Performs automated 6-part hardware diagnostic tests on the SIM800L module (UART, firmware, supply voltage, SIM status, signal strength, network registration).
 
-* **Swagger UI (Interactive Playground)**: `http://[YOUR_PI_IP]:8080/docs`
-  * Features a **"Try it out"** button for every endpoint to send live HTTP requests directly from your browser.
-  * Click **Authorize** at the top right and enter your `X-API-Key` to make authenticated calls.
-* **ReDoc (Static Layout)**: `http://[YOUR_PI_IP]:8080/redoc`
-  * Offers a clean, organized, three-panel layout to read the detailed API schema and integration instructions.
-* **OpenAPI Specification**: `http://[YOUR_PI_IP]:8080/openapi.json`
-  * Download or reference the raw OpenAPI JSON specification to easily import all endpoints into API client tools like **Postman** or **Insomnia**.
-
----
-
-### 1. Health Check
-Verifies if the container can reach and communicate with the SIM800L HAT over the physical device mount. This endpoint is public and does not require authentication:
 ```http
 GET http://[YOUR_PI_IP]:8080/health
 ```
 
-#### Response (Success)
+#### Response (Success - Healthy)
 ```json
 {
   "status": "healthy",
-  "hardware": "SIM800L connected"
+  "hardware": "SIM800L module fully functional",
+  "error": null,
+  "details": {
+    "module_info": "SIM800 R14.18 OK",
+    "power_supply": "+CBC: 0,81,4049 OK",
+    "sim_card": "+CPIN: READY OK",
+    "signal_quality": "+CSQ: 27,0 OK",
+    "network_registration": "+CREG: 0,1 OK"
+  }
 }
 ```
 
 ---
 
 ### 2. Send SMS
-Sends a text message to a specified mobile number. Use international phone formatting (e.g., `+639171234567`).
-
-**Note:** If `SMS_SENDER_API_KEY` is set in the environment, you must authenticate using the `X-API-Key` header.
+Sends a text message to a specified recipient number using international format (e.g. `+639171234567`).
 
 ```http
 POST http://[YOUR_PI_IP]:8080/send-sms
 Content-Type: application/json
-X-API-Key: your_secure_api_key_here
+X-API-Key: your_client_or_master_api_key
 
 {
   "phone_number": "+639171234567",
-  "message": "Hello from your Raspberry Pi 5 SMS Sender gateway!"
+  "message": "Hello from Raspberry Pi 5 SMS Gateway!"
 }
 ```
 
@@ -160,7 +156,48 @@ X-API-Key: your_secure_api_key_here
 {
   "success": true,
   "phone_number": "+639171234567",
-  "message": "Hello from your Raspberry Pi 5 SMS Sender gateway!",
-  "raw_response": "OK\r\n\r\n+CMGS: 42"
+  "message": "Hello from Raspberry Pi 5 SMS Gateway!",
+  "raw_response": "+CMGS: 42 OK"
 }
 ```
+
+---
+
+### 3. SMS History & Metrics
+Retrieves dispatch history logs and credit tracking summary counts.
+
+```http
+GET http://[YOUR_PI_IP]:8080/api/history
+X-API-Key: your_client_or_master_api_key
+```
+
+#### Response (Success)
+```json
+{
+  "stats": {
+    "total": 45,
+    "success": 42,
+    "failed": 3
+  },
+  "history": [
+    {
+      "id": "sms_1721748500_a1b2",
+      "timestamp": "2026-07-23T15:30:00+08:00",
+      "phone_number": "+639171234567",
+      "message": "Sample message",
+      "status": "success",
+      "raw_response": "+CMGS: 42 OK",
+      "app_name": "trace-app"
+    }
+  ]
+}
+```
+
+---
+
+### 4. Admin API Key Management
+Generate, list, and revoke application API keys. Requires the Master Admin Key (`SMS_SENDER_API_KEY`).
+
+* **List API Keys**: `GET /api/keys`
+* **Create Client Key**: `POST /api/keys` (`{"app_name": "trace-app"}`)
+* **Revoke Client Key**: `DELETE /api/keys/{app_name}`
