@@ -44,27 +44,38 @@ import secrets
 
 # Security & Credentials configuration
 API_KEY_HEADER = APIKeyHeader(name="X-API-Key", auto_error=False, description="API Key for clients or Master Admin Key")
-SMS_SENDER_API_KEY = os.getenv("SMS_SENDER_API_KEY")
+raw_api_key = os.getenv("SMS_SENDER_API_KEY")
+SMS_SENDER_API_KEY = raw_api_key.strip().strip('"').strip("'") if raw_api_key else None
 
-DASHBOARD_USERNAME = os.getenv("DASHBOARD_USERNAME")
-DASHBOARD_PASSWORD = os.getenv("DASHBOARD_PASSWORD")
+raw_user = os.getenv("DASHBOARD_USERNAME")
+DASHBOARD_USERNAME = raw_user.strip().strip('"').strip("'") if (raw_user and raw_user.strip()) else "admin"
+
+raw_pass = os.getenv("DASHBOARD_PASSWORD")
+DASHBOARD_PASSWORD = raw_pass.strip().strip('"').strip("'") if (raw_pass and raw_pass.strip()) else None
+
 security_basic = HTTPBasic(auto_error=False)
 
+if DASHBOARD_PASSWORD:
+    logger.info(f"Dashboard HTTP Basic Auth enabled (Username: '{DASHBOARD_USERNAME}')")
+
 def verify_dashboard_auth(credentials: HTTPBasicCredentials = Depends(security_basic)):
-    if DASHBOARD_USERNAME and DASHBOARD_PASSWORD:
+    if DASHBOARD_PASSWORD:
         if not credentials:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Dashboard authentication required",
-                headers={"WWW-Authenticate": "Basic"},
+                headers={"WWW-Authenticate": 'Basic realm="SMS Sender Gateway"'},
             )
-        is_user_correct = secrets.compare_digest(credentials.username, DASHBOARD_USERNAME)
-        is_pass_correct = secrets.compare_digest(credentials.password, DASHBOARD_PASSWORD)
+        user_input = credentials.username.strip() if credentials.username else ""
+        pass_input = credentials.password.strip() if credentials.password else ""
+        
+        is_user_correct = secrets.compare_digest(user_input, DASHBOARD_USERNAME)
+        is_pass_correct = secrets.compare_digest(pass_input, DASHBOARD_PASSWORD)
         if not (is_user_correct and is_pass_correct):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Incorrect username or password",
-                headers={"WWW-Authenticate": "Basic"},
+                headers={"WWW-Authenticate": 'Basic realm="SMS Sender Gateway"'},
             )
     return credentials
 
