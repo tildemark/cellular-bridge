@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SMS Sender API - Dispatch History</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #09090b;
+      --card: #18181b;
+      --card-border: #27272a;
+      --text: #fafafa;
+      --text-muted: #a1a1aa;
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --success: #22c55e;
+      --error: #ef4444;
+      --warning: #f59e0b;
+      --radius: 12px;
+      --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem;
+    }
+
+    header {
+      width: 100%;
+      max-width: 1000px;
+      margin-bottom: 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .logo-container {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.025em;
+    }
+
+    h1 span.logo-highlight {
+      color: var(--primary);
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .nav-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      color: var(--text);
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }
+
+    .nav-btn:hover {
+      background: #27272a;
+      border-color: #3f3f46;
+    }
+
+    main {
+      width: 100%;
+      max-width: 1000px;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1rem;
+    }
+
+    @media (min-width: 640px) {
+      .metrics-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    .metric-card {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .metric-label {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .metric-value {
+      font-size: 1.85rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .metric-value.success {
+      color: var(--success);
+    }
+
+    .metric-value.error {
+      color: var(--error);
+    }
+
+    .metric-value.primary {
+      color: var(--primary);
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    }
+
+    .table-header-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .search-input {
+      background: #09090b;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      color: var(--text);
+      padding: 0.65rem 0.85rem;
+      font-family: var(--font-sans);
+      font-size: 0.875rem;
+      width: 100%;
+      max-width: 320px;
+    }
+
+    .search-input:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    .action-btn {
+      background: #27272a;
+      border: 1px solid var(--card-border);
+      color: var(--text);
+      padding: 0.55rem 0.9rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: all 0.2s ease;
+    }
+
+    .action-btn:hover {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: white;
+    }
+
+    .table-wrapper {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+      text-align: left;
+    }
+
+    th {
+      border-bottom: 1px solid var(--card-border);
+      padding: 0.75rem 0.5rem;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    td {
+      padding: 0.85rem 0.5rem;
+      border-bottom: 1px solid var(--card-border);
+      vertical-align: middle;
+    }
+
+    .badge-status {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.2rem 0.6rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .badge-status.success {
+      background: rgba(34, 197, 94, 0.15);
+      color: var(--success);
+      border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+
+    .badge-status.failed {
+      background: rgba(239, 68, 68, 0.15);
+      color: var(--error);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .code-text {
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      padding: 0.75rem 1.25rem;
+      border-radius: 8px;
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-left: 4px solid var(--success);
+      color: var(--text);
+      box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.3);
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.3s ease;
+      z-index: 100;
+      font-size: 0.875rem;
+    }
+
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="logo-container">
+      <h1><span class="logo-highlight">SMS</span> Dispatch History</h1>
+    </div>
+    <div class="nav-links">
+      <a href="/" class="nav-btn">← Dashboard</a>
+      <a href="/integration" class="nav-btn">📖 Integration Guide</a>
+    </div>
+  </header>
+
+  <main>
+    <!-- Summary Metrics -->
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-label">Total Messages Sent (Credits Used)</div>
+        <div class="metric-value success" id="metric-success">0</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Total Dispatched Requests</div>
+        <div class="metric-value primary" id="metric-total">0</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Failed Attempts</div>
+        <div class="metric-value error" id="metric-failed">0</div>
+      </div>
+    </div>
+
+    <!-- History Table Card -->
+    <div class="card">
+      <div class="table-header-controls">
+        <input type="text" class="search-input" id="search-input" placeholder="Search by phone number or message...">
+        <div style="display: flex; gap: 0.5rem;">
+          <button class="action-btn" id="export-csv-btn">📥 Export CSV</button>
+          <button class="action-btn" id="refresh-btn">🔄 Refresh</button>
+        </div>
+      </div>
+
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Recipient Number</th>
+              <th>Message Body</th>
+              <th>Status</th>
+              <th>Carrier Reference</th>
+            </tr>
+          </thead>
+          <tbody id="history-table-body">
+            <tr>
+              <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+                Loading SMS dispatch history...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <div class="toast" id="toast">
+    <span id="toast-msg">Action completed</span>
+  </div>
+
+  <script>
+    let fullHistoryData = [];
+
+    const historyTableBody = document.getElementById('history-table-body');
+    const searchInput = document.getElementById('search-input');
+    const refreshBtn = document.getElementById('refresh-btn');
+    const exportCsvBtn = document.getElementById('export-csv-btn');
+    const toast = document.getElementById('toast');
+    const toastMsg = document.getElementById('toast-msg');
+
+    const metricSuccess = document.getElementById('metric-success');
+    const metricTotal = document.getElementById('metric-total');
+    const metricFailed = document.getElementById('metric-failed');
+
+    function showToast(msg) {
+      toastMsg.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2500);
+    }
+
+    async function loadHistory() {
+      const apiKey = localStorage.getItem('sms_sender_api_key');
+      const headers = {};
+      if (apiKey) {
+        headers['X-API-Key'] = apiKey;
+      }
+
+      try {
+        const response = await fetch('/api/history', { headers });
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        const data = await response.json();
+        
+        fullHistoryData = data.history || [];
+        
+        // Update stats
+        const stats = data.stats || { total: 0, success: 0, failed: 0 };
+        metricSuccess.textContent = stats.success.toLocaleString();
+        metricTotal.textContent = stats.total.toLocaleString();
+        metricFailed.textContent = stats.failed.toLocaleString();
+
+        renderTable(fullHistoryData);
+      } catch (err) {
+        historyTableBody.innerHTML = `
+          <tr>
+            <td colspan="5" style="text-align: center; color: var(--error); padding: 2rem;">
+              Failed to load history (${err.message}). Make sure your API Key is saved in the Dashboard.
+            </td>
+          </tr>
+        `;
+      }
+    }
+
+    function renderTable(records) {
+      if (records.length === 0) {
+        historyTableBody.innerHTML = `
+          <tr>
+            <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+              No SMS dispatch records found.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      historyTableBody.innerHTML = records.map(item => {
+        const isSuccess = item.status === 'success';
+        const formattedTime = new Date(item.timestamp).toLocaleString();
+        
+        return `
+          <tr>
+            <td class="code-text" style="color: var(--text-muted); font-size: 0.8rem;">${formattedTime}</td>
+            <td class="code-text" style="font-weight: 600;">${escapeHtml(item.phone_number)}</td>
+            <td style="max-width: 300px; word-break: break-word;">${escapeHtml(item.message)}</td>
+            <td>
+              <span class="badge-status ${isSuccess ? 'success' : 'failed'}">
+                ${isSuccess ? 'Success' : 'Failed'}
+              </span>
+            </td>
+            <td class="code-text" style="color: #34d399; font-size: 0.8rem;">${escapeHtml(item.raw_response || '-')}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
+    // Search filter handler
+    searchInput.addEventListener('input', () => {
+      const q = searchInput.value.toLowerCase().trim();
+      if (!q) {
+        renderTable(fullHistoryData);
+        return;
+      }
+      const filtered = fullHistoryData.filter(item => 
+        (item.phone_number && item.phone_number.toLowerCase().includes(q)) ||
+        (item.message && item.message.toLowerCase().includes(q)) ||
+        (item.raw_response && item.raw_response.toLowerCase().includes(q))
+      );
+      renderTable(filtered);
+    });
+
+    refreshBtn.addEventListener('click', () => {
+      loadHistory();
+      showToast('Refreshed history');
+    });
+
+    // Export CSV handler
+    exportCsvBtn.addEventListener('click', () => {
+      if (fullHistoryData.length === 0) {
+        showToast('No records to export');
+        return;
+      }
+
+      const headers = ['Timestamp', 'Phone Number', 'Message', 'Status', 'Carrier Response'];
+      const rows = fullHistoryData.map(item => [
+        `"${item.timestamp}"`,
+        `"${item.phone_number}"`,
+        `"${(item.message || '').replace(/"/g, '""')}"`,
+        `"${item.status}"`,
+        `"${(item.raw_response || '').replace(/"/g, '""')}"`
+      ]);
+
+      const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement('a');
+      link.setAttribute('href', encodedUri);
+      link.setAttribute('download', `sms_history_${new Date().toISOString().slice(0,10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showToast('CSV downloaded successfully');
+    });
+
+    loadHistory();
+  </script>
+</body>
+</html>

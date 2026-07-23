@@ -69,6 +69,32 @@ def verify_dashboard_auth(credentials: HTTPBasicCredentials = Depends(security_b
     return credentials
 
 KEYS_FILE = "data/api_keys.json"
+HISTORY_FILE = "data/sms_history.json"
+
+def load_history():
+    if not os.path.exists("data"):
+        os.makedirs("data")
+    if not os.path.exists(HISTORY_FILE):
+        with open(HISTORY_FILE, "w") as f:
+            json.dump([], f)
+        return []
+    try:
+        with open(HISTORY_FILE, "r") as f:
+            return json.load(f)
+    except Exception as e:
+        logger.error(f"Error reading history file: {e}")
+        return []
+
+def add_history_record(record):
+    history = load_history()
+    history.insert(0, record)
+    if len(history) > 10000:
+        history = history[:10000]
+    try:
+        with open(HISTORY_FILE, "w") as f:
+            json.dump(history, f, indent=2)
+    except Exception as e:
+        logger.error(f"Error saving history record: {e}")
 
 def load_keys():
     if not os.path.exists("data"):
@@ -375,6 +401,38 @@ def health_check():
         except Exception as e:
             return {"status": "error", "error": str(e)}
 
+@app.get(
+    "/history",
+    response_class=HTMLResponse,
+    include_in_schema=False
+)
+def get_history_page(auth: HTTPBasicCredentials = Depends(verify_dashboard_auth)):
+    try:
+        with open("static/history.html", "r", encoding="utf-8") as f:
+            return HTMLResponse(content=f.read(), status_code=200)
+    except Exception as e:
+        return HTMLResponse(content=f"<h3>Error loading history page: {str(e)}</h3>", status_code=500)
+
+@app.get(
+    "/api/history",
+    response_model=dict,
+    tags=["System"],
+    summary="Get SMS dispatch history & metrics",
+    description="Retrieves a list of all recorded SMS dispatch attempts, along with summary counts for credit tracking."
+)
+def get_sms_history(api_key: str = Depends(verify_api_key)):
+    history = load_history()
+    success_count = sum(1 for item in history if item.get("status") == "success")
+    failed_count = sum(1 for item in history if item.get("status") == "failed")
+    return {
+        "stats": {
+            "total": len(history),
+            "success": success_count,
+            "failed": failed_count
+        },
+        "history": history
+    }
+
 @app.post(
     "/send-sms",
     response_model=SMSSuccessResponse,
@@ -383,6 +441,7 @@ def health_check():
     description="Instructs the SIM800L module to transmit a text message to the specified phone number. Requires a valid API Key or Master Admin Key."
 )
 def send_sms(payload: SMSRequest, api_key: str = Depends(verify_api_key)):
+    import datetime
     with serial_lock:
         logger.info(f"Received request to send SMS to {payload.phone_number}")
         try:
@@ -432,6 +491,15 @@ def send_sms(payload: SMSRequest, api_key: str = Depends(verify_api_key)):
                 
                 if diagnostics:
                     detail_msg += " Diagnostics: " + " | ".join(diagnostics)
+                
+                add_history_record({
+                    "id": f"sms_{int(time.time())}_{secrets.token_hex(4)}",
+                    "timestamp": datetime.datetime.now().isoformat(),
+                    "phone_number": payload.phone_number,
+                    "message": payload.message,
+                    "status": "failed",
+                    "raw_response": detail_msg
+                })
                 raise HTTPException(status_code=502, detail=detail_msg)
                 
             # Set character set to GSM
@@ -453,6 +521,14 @@ def send_sms(payload: SMSRequest, api_key: str = Depends(verify_api_key)):
             logger.info(f"Carrier Response: {response.strip()}")
             
             if "+CMGS:" in response:
+                add_history_record({
+                    "id": f"sms_{int(time.time())}_{secrets.token_hex(4)}",
+                    "timestamp": datetime.datetime.now().isoformat(),
+                    "phone_number": payload.phone_number,
+                    "message": payload.message,
+                    "status": "success",
+                    "raw_response": response.strip()
+                })
                 return {
                     "success": True,
                     "phone_number": payload.phone_number,
@@ -461,14 +537,32 @@ def send_sms(payload: SMSRequest, api_key: str = Depends(verify_api_key)):
                 }
             elif "Call Ready" in response or "SMS Ready" in response or "NORMAL POWER DOWN" in response:
                 logger.error(f"Hardware brownout detected during transmission. Module output: {response.strip()}")
+                err_text = f"Hardware Brownout Reset: SIM800L rebooted during transmission. (Raw output: {response.strip()})"
+                add_history_record({
+                    "id": f"sms_{int(time.time())}_{secrets.token_hex(4)}",
+                    "timestamp": datetime.datetime.now().isoformat(),
+                    "phone_number": payload.phone_number,
+                    "message": payload.message,
+                    "status": "failed",
+                    "raw_response": err_text
+                })
                 raise HTTPException(
                     status_code=500,
                     detail=f"Hardware Brownout Reset: SIM800L rebooted during transmission due to peak current voltage drop. Ensure 4.0V / 2A+ power supply and add a 1000uF capacitor across VCC and GND. (Raw output: {response.strip()})"
                 )
             else:
+                err_text = f"SMS rejected by network carrier: {response.strip()}"
+                add_history_record({
+                    "id": f"sms_{int(time.time())}_{secrets.token_hex(4)}",
+                    "timestamp": datetime.datetime.now().isoformat(),
+                    "phone_number": payload.phone_number,
+                    "message": payload.message,
+                    "status": "failed",
+                    "raw_response": err_text
+                })
                 raise HTTPException(
                     status_code=500,
-                    detail=f"SMS rejected by network carrier: {response.strip()}"
+                    detail=err_text
                 )
                 
         except Exception as e:

@@ -98,12 +98,14 @@ Before running the container, you must configure the Raspberry Pi's physical GPI
 
 The API runs on port `8080`.
 
-### Multi-Language Integration Guide & Playground
+### SMS History & Credit Tracker
 
-Access ready-to-use, copyable code integration snippets tailored for your language and framework:
+Monitor sent messages, carrier references, and total credits used:
 
-* **Interactive Integration Guide**: `http://[YOUR_PI_IP]:8080/integration`
-  * Features live code customizers and pre-built code snippets for **Node.js**, **TypeScript**, **PHP (cURL & Guzzle)**, **Laravel**, **CodeIgniter 3 & 4**, **Python**, and **cURL CLI**.
+* **SMS Dispatch History Web UI**: `http://[YOUR_PI_IP]:8080/history`
+  * Features credit usage metrics, search/filtering by phone number or message body, and CSV export.
+* **SMS History API Endpoint**: `GET http://[YOUR_PI_IP]:8080/api/history`
+  * Returns JSON payload containing total sent counts, success/failure metrics, and dispatch records.
 
 ---
 
