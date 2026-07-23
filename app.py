@@ -27,19 +27,46 @@ tags_metadata = [
     },
 ]
 
+from fastapi.security import APIKeyHeader, HTTPBasic, HTTPBasicCredentials
+
 app = FastAPI(
     title="SMS Sender API",
     description="Raspberry Pi 5 + SIM800L cellular gateway for sending and receiving SMS via HTTP REST",
     version="1.0.0",
-    openapi_tags=tags_metadata
+    openapi_tags=tags_metadata,
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None
 )
 
 import json
 import secrets
 
-# API Key configuration
+# Security & Credentials configuration
 API_KEY_HEADER = APIKeyHeader(name="X-API-Key", auto_error=False, description="API Key for clients or Master Admin Key")
 SMS_SENDER_API_KEY = os.getenv("SMS_SENDER_API_KEY")
+
+DASHBOARD_USERNAME = os.getenv("DASHBOARD_USERNAME")
+DASHBOARD_PASSWORD = os.getenv("DASHBOARD_PASSWORD")
+security_basic = HTTPBasic(auto_error=False)
+
+def verify_dashboard_auth(credentials: HTTPBasicCredentials = Depends(security_basic)):
+    if DASHBOARD_USERNAME and DASHBOARD_PASSWORD:
+        if not credentials:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Dashboard authentication required",
+                headers={"WWW-Authenticate": "Basic"},
+            )
+        is_user_correct = secrets.compare_digest(credentials.username, DASHBOARD_USERNAME)
+        is_pass_correct = secrets.compare_digest(credentials.password, DASHBOARD_PASSWORD)
+        if not (is_user_correct and is_pass_correct):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect username or password",
+                headers={"WWW-Authenticate": "Basic"},
+            )
+    return credentials
 
 KEYS_FILE = "data/api_keys.json"
 
@@ -237,17 +264,32 @@ def delete_api_key(app_name: str, admin_key: str = Depends(verify_admin_key)):
     save_keys(keys_data)
     return {"success": True, "message": f"Key for {app_name} revoked successfully"}
 
+from fastapi.openapi.docs import get_swagger_ui_html, get_redoc_html
+from fastapi.openapi.utils import get_openapi
+
 @app.get(
     "/",
     response_class=HTMLResponse,
     include_in_schema=False
 )
-def get_dashboard():
+def get_dashboard(auth: HTTPBasicCredentials = Depends(verify_dashboard_auth)):
     try:
         with open("static/index.html", "r", encoding="utf-8") as f:
             return HTMLResponse(content=f.read(), status_code=200)
     except Exception as e:
         return HTMLResponse(content=f"<h3>Error loading dashboard: {str(e)}</h3>", status_code=500)
+
+@app.get("/docs", include_in_schema=False)
+def get_swagger_documentation(auth: HTTPBasicCredentials = Depends(verify_dashboard_auth)):
+    return get_swagger_ui_html(openapi_url="/openapi.json", title="SMS Sender API - Docs")
+
+@app.get("/redoc", include_in_schema=False)
+def get_redoc_documentation(auth: HTTPBasicCredentials = Depends(verify_dashboard_auth)):
+    return get_redoc_html(openapi_url="/openapi.json", title="SMS Sender API - ReDoc")
+
+@app.get("/openapi.json", include_in_schema=False)
+def get_open_api_endpoint(auth: HTTPBasicCredentials = Depends(verify_dashboard_auth)):
+    return get_openapi(title=app.title, version=app.version, description=app.description, routes=app.routes, tags=tags_metadata)
 
 @app.get(
     "/health",

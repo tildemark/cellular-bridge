@@ -71,9 +71,14 @@ Before running the container, you must configure the Raspberry Pi's physical GPI
 
 ## Deployment (via Docker Compose)
 
-1. Create a `.env` file in the root of the project to configure your API key:
+1. Create a `.env` file in the root of the project to configure dashboard authentication and API keys:
    ```env
-   SMS_SENDER_API_KEY=your_secure_api_key_here
+   # Protect the Dashboard (HTTP Basic Auth for public IP hosting)
+   DASHBOARD_USERNAME=admin
+   DASHBOARD_PASSWORD=your_secure_dashboard_password
+
+   # Master Admin API Key for API Key management and SMS sending
+   SMS_SENDER_API_KEY=your_secure_master_api_key
    ```
 
 2. Start the API service inside the `sms-sender` directory:
@@ -81,6 +86,11 @@ Before running the container, you must configure the Raspberry Pi's physical GPI
    # Build and run the container in detached mode
    docker compose up --build -d
    ```
+
+> [!TIP]
+> **Public IP Security Best Practices**:
+> - When deploying on a public IP, always set `DASHBOARD_USERNAME` and `DASHBOARD_PASSWORD` to prevent unauthorized visitors from accessing the dashboard and API documentation.
+> - Run the service behind a reverse proxy (e.g. Nginx, Caddy, or Cloudflare Tunnel) to enable HTTPS/TLS encryption.
 
 ---
 
