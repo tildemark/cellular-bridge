@@ -385,6 +385,12 @@ def send_sms(payload: SMSRequest, api_key: str = Depends(verify_api_key)):
                     "message": payload.message,
                     "raw_response": response.strip()
                 }
+            elif "Call Ready" in response or "SMS Ready" in response or "NORMAL POWER DOWN" in response:
+                logger.error(f"Hardware brownout detected during transmission. Module output: {response.strip()}")
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Hardware Brownout Reset: SIM800L rebooted during transmission due to peak current voltage drop. Ensure 4.0V / 2A+ power supply and add a 1000uF capacitor across VCC and GND. (Raw output: {response.strip()})"
+                )
             else:
                 raise HTTPException(
                     status_code=500,
