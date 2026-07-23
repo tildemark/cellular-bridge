@@ -3,7 +3,7 @@ import logging
 import serial
 import os
 import threading
-from fastapi import FastAPI, HTTPException, Security, Depends, status
+from fastapi import FastAPI, HTTPException, Security, Depends, status, Request
 from fastapi.responses import HTMLResponse
 from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
@@ -118,6 +118,20 @@ def save_keys(keys_data):
             json.dump(keys_data, f, indent=2)
     except Exception as e:
         logger.error(f"Error saving keys file: {e}")
+
+def resolve_app_name(request: Request, api_key: str = None) -> str:
+    source_header = request.headers.get("X-Request-Source")
+    if source_header and source_header.lower() == "dashboard":
+        return "Dashboard"
+    if api_key:
+        if SMS_SENDER_API_KEY and api_key == SMS_SENDER_API_KEY:
+            return "Master Admin Key"
+        keys_data = load_keys()
+        for app, key in keys_data.items():
+            if key == api_key:
+                return app
+        return "Master Admin Key"
+    return "Dashboard" if not SMS_SENDER_API_KEY else "Anonymous"
 
 def verify_api_key(api_key: str = Security(API_KEY_HEADER)):
     if SMS_SENDER_API_KEY:
@@ -440,10 +454,11 @@ def get_sms_history(api_key: str = Depends(verify_api_key)):
     summary="Send an SMS message",
     description="Instructs the SIM800L module to transmit a text message to the specified phone number. Requires a valid API Key or Master Admin Key."
 )
-def send_sms(payload: SMSRequest, api_key: str = Depends(verify_api_key)):
+def send_sms(payload: SMSRequest, request: Request, api_key: str = Depends(verify_api_key)):
     import datetime
+    app_name = resolve_app_name(request, api_key)
     with serial_lock:
-        logger.info(f"Received request to send SMS to {payload.phone_number}")
+        logger.info(f"Received request from [{app_name}] to send SMS to {payload.phone_number}")
         try:
             ser = get_serial_device(timeout=10)
             
@@ -498,7 +513,8 @@ def send_sms(payload: SMSRequest, api_key: str = Depends(verify_api_key)):
                     "phone_number": payload.phone_number,
                     "message": payload.message,
                     "status": "failed",
-                    "raw_response": detail_msg
+                    "raw_response": detail_msg,
+                    "app_name": app_name
                 })
                 raise HTTPException(status_code=502, detail=detail_msg)
                 
@@ -527,7 +543,8 @@ def send_sms(payload: SMSRequest, api_key: str = Depends(verify_api_key)):
                     "phone_number": payload.phone_number,
                     "message": payload.message,
                     "status": "success",
-                    "raw_response": response.strip()
+                    "raw_response": response.strip(),
+                    "app_name": app_name
                 })
                 return {
                     "success": True,
@@ -544,7 +561,8 @@ def send_sms(payload: SMSRequest, api_key: str = Depends(verify_api_key)):
                     "phone_number": payload.phone_number,
                     "message": payload.message,
                     "status": "failed",
-                    "raw_response": err_text
+                    "raw_response": err_text,
+                    "app_name": app_name
                 })
                 raise HTTPException(
                     status_code=500,
@@ -558,7 +576,8 @@ def send_sms(payload: SMSRequest, api_key: str = Depends(verify_api_key)):
                     "phone_number": payload.phone_number,
                     "message": payload.message,
                     "status": "failed",
-                    "raw_response": err_text
+                    "raw_response": err_text,
+                    "app_name": app_name
                 })
                 raise HTTPException(
                     status_code=500,

@@ -630,7 +630,8 @@
 
       try {
         const headers = {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'X-Request-Source': 'Dashboard'
         };
         const key = localStorage.getItem('sms_sender_api_key');
         if (key) {

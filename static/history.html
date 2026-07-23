@@ -326,6 +326,7 @@
           <thead>
             <tr>
               <th>Timestamp</th>
+              <th>Source / App</th>
               <th>Recipient Number</th>
               <th>Message Body</th>
               <th>Status</th>
@@ -334,7 +335,7 @@
           </thead>
           <tbody id="history-table-body">
             <tr>
-              <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+              <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2rem;">
                 Loading SMS dispatch history...
               </td>
             </tr>
@@ -394,7 +395,7 @@
       } catch (err) {
         historyTableBody.innerHTML = `
           <tr>
-            <td colspan="5" style="text-align: center; color: var(--error); padding: 2rem;">
+            <td colspan="6" style="text-align: center; color: var(--error); padding: 2rem;">
               Failed to load history (${err.message}). Make sure your API Key is saved in the Dashboard.
             </td>
           </tr>
@@ -406,7 +407,7 @@
       if (records.length === 0) {
         historyTableBody.innerHTML = `
           <tr>
-            <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+            <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2rem;">
               No SMS dispatch records found.
             </td>
           </tr>
@@ -417,10 +418,16 @@
       historyTableBody.innerHTML = records.map(item => {
         const isSuccess = item.status === 'success';
         const formattedTime = new Date(item.timestamp).toLocaleString();
+        const appName = item.app_name || 'Dashboard';
         
         return `
           <tr>
             <td class="code-text" style="color: var(--text-muted); font-size: 0.8rem;">${formattedTime}</td>
+            <td>
+              <span style="background: #27272a; border: 1px solid var(--card-border); padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.78rem; font-weight: 500; color: var(--primary);">
+                ${escapeHtml(appName)}
+              </span>
+            </td>
             <td class="code-text" style="font-weight: 600;">${escapeHtml(item.phone_number)}</td>
             <td style="max-width: 300px; word-break: break-word;">${escapeHtml(item.message)}</td>
             <td>
@@ -449,6 +456,7 @@
       const filtered = fullHistoryData.filter(item => 
         (item.phone_number && item.phone_number.toLowerCase().includes(q)) ||
         (item.message && item.message.toLowerCase().includes(q)) ||
+        (item.app_name && item.app_name.toLowerCase().includes(q)) ||
         (item.raw_response && item.raw_response.toLowerCase().includes(q))
       );
       renderTable(filtered);
@@ -466,14 +474,26 @@
         return;
       }
 
-      const headers = ['Timestamp', 'Phone Number', 'Message', 'Status', 'Carrier Response'];
+      const headers = ['Timestamp', 'Source / App', 'Phone Number', 'Message', 'Status', 'Carrier Response'];
       const rows = fullHistoryData.map(item => [
         `"${item.timestamp}"`,
+        `"${item.app_name || 'Dashboard'}"`,
         `"${item.phone_number}"`,
         `"${(item.message || '').replace(/"/g, '""')}"`,
         `"${item.status}"`,
         `"${(item.raw_response || '').replace(/"/g, '""')}"`
       ]);
+
+      const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement('a');
+      link.setAttribute('href', encodedUri);
+      link.setAttribute('download', `sms_history_${new Date().toISOString().slice(0,10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showToast('CSV downloaded successfully');
+    });
 
       const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
       const encodedUri = encodeURI(csvContent);
