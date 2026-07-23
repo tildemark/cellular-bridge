@@ -381,8 +381,28 @@ def send_sms(payload: SMSRequest, api_key: str = Depends(verify_api_key)):
                 ser.close()
                 raise HTTPException(status_code=502, detail="SIM800L hardware not responding")
                 
-            # Select Text Mode
-            if not send_at_command(ser, "AT+CMGF=1"):
+            # Wait for SIM card to finish initializing if busy
+            for attempt in range(5):
+                cpin = query_at_command(ser, "AT+CPIN?", timeout=2)
+                if cpin and "READY" in cpin:
+                    break
+                if cpin and "SIM busy" in cpin:
+                    logger.info(f"SIM card is busy initializing (attempt {attempt+1}/5), waiting 2 seconds...")
+                    time.sleep(2)
+                else:
+                    break
+                    
+            # Select Text Mode (with retries for transient busy state)
+            cmgf_success = False
+            for attempt in range(3):
+                if send_at_command(ser, "AT+CMGF=1"):
+                    cmgf_success = True
+                    break
+                if attempt < 2:
+                    logger.info(f"AT+CMGF=1 attempt {attempt+1} failed, retrying in 1.5 seconds...")
+                    time.sleep(1.5)
+                
+            if not cmgf_success:
                 # Collect diagnostic information
                 cpin_res = query_at_command(ser, "AT+CPIN?", timeout=2)
                 creg_res = query_at_command(ser, "AT+CREG?", timeout=2)
